@@ -38,11 +38,12 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 const render = () => renderToStaticMarkup(<ThemeProvider><Tracker store={store} /></ThemeProvider>);
 const syncButton = (html: string) => html.match(/<button class="icon-button sync-button"[^>]*>[\s\S]*?<\/button>/)![0];
 
-it('renders four navigation destinations, labelled quick actions and a focusable main', () => {
+it('renders three navigation destinations, labelled quick actions and a focusable main', () => {
   const html = render();
   expect(html).toContain('aria-label="Điều hướng chính"');
   expect(html.match(/aria-current="page"/g)).toHaveLength(1);
-  for (const label of ['Hôm nay', 'Nhật ký', 'Tổng quan', 'Gia đình']) expect(html).toContain(label);
+  for (const label of ['Hôm nay', 'Nhật ký', 'Gia đình']) expect(html).toContain(label);
+  expect(html).not.toContain('Tổng quan</button>');
   expect(html).toContain('role="group" aria-label="Ghi nhanh cho Bông"');
   expect(html).toContain('tabindex="-1"');
   expect(html).toContain('aria-label="Đổi bé, đang chọn Bông"');
@@ -59,6 +60,15 @@ it('shows a compact dd/mm/yyyy date beside the activity filter using the family 
   expect(html).toMatch(/class="[^"]*journal-date-text"[^>]*type="text"[^>]*value="06\/09\/2026"/);
   expect(html).toContain('aria-label="Mở lịch"');
   expect(html).toContain('<label>Hoạt động<select');
+});
+it('merges the overview above the journal on the journal screen', () => {
+  journalScreen = true;
+  current.events = [bottle];
+  const html = render();
+  expect(html).toContain('aria-label="Tổng hợp 24 giờ qua"');
+  expect(html).toContain('90 <span>ml</span>');
+  expect(html.indexOf('Tổng hợp 24 giờ qua')).toBeLessThan(html.indexOf('Nhật ký · Bông'));
+  expect(html).toContain('7 ngày gần nhất');
 });
 it('uses renamed workspace names in the header, picker trigger and quick actions', () => {
   current.workspace.families[0].name = 'Tên gia đình mới';

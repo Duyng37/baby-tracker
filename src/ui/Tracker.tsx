@@ -29,15 +29,15 @@ import { VaccinationForm } from './VaccinationForm';
 import { scheduleToastDismiss } from './toast';
 import type { RenameTarget } from '../cloud/rename-profile';
 
-type Screen = 'today' | 'journal' | 'insights' | 'family';
+type Screen = 'today' | 'journal' | 'family';
 type Panel = null | 'switch' | EventBody['type'] | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | LocalEvent;
 function isQuickPanel(panel: Panel): panel is QuickEventType {
   return typeof panel === 'string' && ['bottle', 'diaper', 'breast', 'sleep'].includes(panel);
 }
-const screens: [Screen, string][] = [['today', 'Hôm nay'], ['journal', 'Nhật ký'], ['insights', 'Tổng quan'], ['family', 'Gia đình']];
+const screens: [Screen, string][] = [['today', 'Hôm nay'], ['journal', 'Nhật ký'], ['family', 'Gia đình']];
 const descriptions: Record<Screen, string> = {
-  today: 'Từng điều nhỏ, cùng con lớn lên.', journal: 'Nhớ giúp bạn những nhịp sinh hoạt của con.',
-  insights: 'Nhìn lại nhẹ nhàng, không so sánh.', family: 'Cùng nhau chăm bé, sẻ chia mỗi ngày.',
+  today: 'Từng điều nhỏ, cùng con lớn lên.', journal: 'Nhìn lại nhẹ nhàng và nhớ giúp bạn những nhịp sinh hoạt của con.',
+  family: 'Cùng nhau chăm bé, sẻ chia mỗi ngày.',
 };
 const panelTitles = { switch: 'Chọn bé', bottle: 'Ghi bình sữa', diaper: 'Thay tã', breast: 'Bắt đầu bú mẹ', sleep: 'Ghi giấc ngủ',
   vaccination: 'Thêm lịch tiêm chủng',
@@ -188,7 +188,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
             <div className="row">{event.body.type === 'breast' && <button disabled={saving} onClick={() => timer(event, 'switch')}><Icon name="swap" />Đổi bên</button>}
               <button className="primary" disabled={saving} onClick={() => timer(event, 'stop')}>{event.body.type === 'sleep' ? 'Đã thức' : 'Kết thúc'}</button></div>
           </article>)}</section>}
-          {(screen === 'today' || screen === 'insights') && <section aria-label="Tổng hợp 24 giờ qua"><div className="section-heading"><h2>24 giờ qua</h2><small>{baby.nickname}</small></div>
+          {(screen === 'today' || screen === 'journal') && <section aria-label="Tổng hợp 24 giờ qua"><div className="section-heading"><h2>24 giờ qua</h2><small>{baby.nickname}</small></div>
             <Metrics summary={summary} />
             <div className="disclaimer"><Icon name="info" /><p className="muted">Tính cả timer đang chạy. Đây là nhật ký, không phải đánh giá sức khỏe hay hướng dẫn lượng sữa.</p></div>
           </section>}
@@ -199,7 +199,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
             {!visible.length && <div className="empty"><Icon name="journal" /><h3>{screen === 'journal' ? 'Chưa có hoạt động phù hợp.' : 'Một khoảng trống nhỏ, sẵn sàng để ghi.'}</h3><p>{screen === 'journal' ? 'Thử chọn ngày hoặc hoạt động khác. Khi ghi nhanh, bạn có thể chọn ngày/giờ để ghi bù.' : `Chạm một trong bốn nút bên dưới để ghi cho ${baby.nickname}.`}</p></div>}
             <Journal events={visible} timezone={timezone} onSelect={openPanel} />
           </section>}
-          {screen === 'insights' && <section className="card stack"><div className="section-heading"><h2>7 ngày gần nhất</h2><Icon name="insights" /></div><p>Đã ghi {events.filter(e => !e.body.deleted && e.body.type !== 'vaccination' && Date.parse(e.body.started_at) >= now - 7 * 86_400_000).length} hoạt động cho {baby.nickname}.</p><p className="muted">Mỗi ghi nhận là một chút an tâm. Biểu đồ theo ngày sẽ được bổ sung; bạn có thể xuất bản sao lưu ở màn Gia đình.</p></section>}
+          {screen === 'journal' && <section className="card stack"><div className="section-heading"><h2>7 ngày gần nhất</h2><Icon name="insights" /></div><p>Đã ghi {events.filter(e => !e.body.deleted && e.body.type !== 'vaccination' && Date.parse(e.body.started_at) >= now - 7 * 86_400_000).length} hoạt động cho {baby.nickname}.</p><p className="muted">Mỗi ghi nhận là một chút an tâm. Biểu đồ theo ngày sẽ được bổ sung; bạn có thể xuất bản sao lưu ở màn Gia đình.</p></section>}
           {screen === 'family' && <section className="stack"><article className="card stack">
             {family && <FamilyProfiles family={family} babies={view.workspace.babies} owner={own} memberCount={view.workspace.memberships.filter(m => m.family_id === family.id).length}
               canEdit={!localOnly && sync.online} onRename={target => { setRenameTarget(target); openPanel('rename'); }} />}
