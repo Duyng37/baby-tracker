@@ -11,9 +11,21 @@ const mime = path => path.endsWith('.js') ? 'text/javascript' : path.endsWith('.
 let server;
 try {
   const files = readdirSync(root, { recursive: true }).map(path => path.replaceAll('\\', '/'));
-  const assets = files.filter(path => /^(assets\/.*\.(js|css)|icons\/noi-[0-9]+\.png)$/.test(path));
+  const assets = files.filter(path => /^(assets\/.*\.(js|css)|icons\/noi-v[0-9]+-[0-9]+\.png)$/.test(path));
   assert(assets.some(path => /\/Account-.*\.js$/.test(path)));
   assert.equal(assets.filter(path => path.endsWith('.png')).length, 3);
+  const manifest = JSON.parse(readFileSync(new URL('manifest.webmanifest', root), 'utf8'));
+  const html = readFileSync(new URL('index.html', root), 'utf8');
+  assert.equal(manifest.id, '/'); assert.equal(manifest.start_url, '/');
+  const appleIcon = html.match(/rel="apple-touch-icon"[^>]*href="([^"]+)"/)?.[1];
+  assert.equal(appleIcon, '/icons/noi-v2-180.png');
+  for (const path of [...manifest.icons.map(icon => icon.src), appleIcon]) {
+    assert(assets.includes(path.slice(1)));
+    const png = readFileSync(new URL(path.slice(1), root));
+    assert.equal(png.subarray(1, 4).toString(), 'PNG');
+    const size = Number(path.match(/-([0-9]+)\.png$/)[1]);
+    assert.equal(png.readUInt32BE(16), size); assert.equal(png.readUInt32BE(20), size);
+  }
   const expected = new Set(['/index.html', '/manifest.webmanifest', ...assets.map(path => `/${path}`)]);
   server = createServer((request, response) => {
     const path = new URL(request.url, 'http://localhost').pathname;

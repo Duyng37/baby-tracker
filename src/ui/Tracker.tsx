@@ -10,7 +10,9 @@ import { Sheet } from './Sheet';
 import { OnlineSetup } from './OnlineSetup';
 import { Invitation } from './Invitation';
 import { Icon } from './Icon';
+import { LoadingScreen } from './LoadingScreen';
 import { eventDetail, Journal, journalEvents } from './Journal';
+import { JournalDateInput } from './JournalDateInput';
 import { Metrics } from './Metrics';
 import { useTheme } from './theme';
 import { saveUnchangedEvent } from './event-edits';
@@ -106,7 +108,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     writing.current = true; lastWrite.current = Date.now(); setSaving(true); setNotice('');
     try {
       await action(); focusContentAfterWrite.current = focusContent;
-      setPanel(null); setNotice('Đã lưu trên máy · chờ cloud xác nhận.'); sync.kick();
+      setPanel(null); sync.kick();
     }
     catch (error) { setNotice(error instanceof DataError ? error.message : 'Chưa lưu được trên thiết bị. Không đóng app; hãy kiểm tra dung lượng/quyền lưu trữ.'); }
     finally { writing.current = false; setSaving(false); }
@@ -120,6 +122,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     void write(async () => {
       await saveUnchangedEvent(store, event, body);
       setUndo(removable ? { before: event, after: body } : null);
+      if (removable) setNotice('Đã xóa ghi nhận.');
     }, removable || event.body.type === 'vaccination');
   }
   function timer(event: LocalEvent, action: 'stop' | 'switch') {
@@ -145,7 +148,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   const syncOffline = localOnly || !sync.online;
   const syncWarning = syncOffline || !!sync.message;
 
-  if (!view.ready) return <main className="welcome"><p>Đang mở dữ liệu trên thiết bị…</p></main>;
+  if (!view.ready) return <LoadingScreen detail="Đang mở dữ liệu trên thiết bị…" />;
   if (view.error) return <main className="welcome"><h1>Chưa mở được bộ nhớ thiết bị</h1><p>Kiểm tra quyền lưu trữ hoặc dung lượng. Không xóa dữ liệu trình duyệt nếu còn thay đổi chưa gửi.</p></main>;
   return <div className="app">
     <a className="skip-link" href="#content">Đến nội dung</a>
@@ -156,9 +159,10 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
         {baby && <Icon name="down" />}</button>
       <div className="header-actions"><div className="sync-control">
         <button className="icon-button sync-button" data-offline={syncOffline} data-warning={syncWarning} data-busy={sync.busy}
+          aria-busy={!syncOffline && sync.busy}
           aria-label={`${syncDetail}. ${syncAction}`} title={`${syncDetail}. ${syncAction}`}
           onClick={() => localOnly ? authEvents.dispatchEvent(new Event('recheck')) : sync.kick()} disabled={sync.busy || (!localOnly && !sync.online)}>
-          <Icon name={syncOffline ? 'offline' : sync.message ? 'info' : sync.busy || pending.length || !view.lastContact ? 'swap' : 'cloud'} /></button>
+          <Icon name={syncOffline ? 'offline' : sync.busy ? 'loading' : sync.message ? 'info' : pending.length || !view.lastContact ? 'swap' : 'cloud'} /></button>
         <span className="sr-only" role="status">{syncDetail}</span><span className="sync-tooltip" aria-hidden="true">{syncDetail}</span>
       </div><button className="icon-button theme-button" aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /></button></div>
     </header>
@@ -184,7 +188,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
           </section>}
           {(screen === 'today' || screen === 'journal') && <section><div className="section-heading"><h2>{screen === 'today' ? 'Nhịp hôm nay' : `Nhật ký · ${baby.nickname}`}</h2>
             {screen === 'today' ? <button className="text-button" onClick={() => navigate('journal')}>Xem nhật ký<Icon name="chevron" /></button> : <small>{visible.length} hoạt động</small>}</div>
-            {screen === 'journal' && <div className="row journal-filters"><label>Ngày<input type="date" value={date || today} onChange={e => setDate(e.target.value)} /></label>
+            {screen === 'journal' && <div className="row journal-filters"><JournalDateInput key={baby.id} value={date || today} onChange={setDate} />
               <label>Hoạt động<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả</option>{Object.entries(labels).filter(([key]) => key !== 'vaccination').map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>}
             {!visible.length && <div className="empty"><Icon name="journal" /><h3>{screen === 'journal' ? 'Chưa có hoạt động phù hợp.' : 'Một khoảng trống nhỏ, sẵn sàng để ghi.'}</h3><p>{screen === 'journal' ? 'Thử chọn ngày hoặc hoạt động khác. Khi ghi nhanh, bạn có thể chọn ngày/giờ để ghi bù.' : `Chạm một trong bốn nút bên dưới để ghi cho ${baby.nickname}.`}</p></div>}
             <Journal events={visible} timezone={timezone} onSelect={openPanel} />
@@ -226,7 +230,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       {typeof panel === 'object' && panel.body.type !== 'vaccination' && <form className="stack" onSubmit={e => { e.preventDefault(); change(panel, { ...panel.body, note: String(new FormData(e.currentTarget).get('note') ?? '') }); }}><div className="card stack"><p className="sheet-intro">{labels[panel.body.type]} · {timeLabel(panel.body.started_at)}</p><p>{eventDetail(panel.body)}</p></div><label>Ghi chú<textarea name="note" maxLength={500} placeholder="Một điều nhỏ bạn muốn nhớ…" defaultValue={panel.body.note} /></label><button className="primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu trên máy'}</button><button type="button" className="danger-button" disabled={saving} onClick={() => change(panel, { ...panel.body, deleted: true }, true)}>Xóa ghi nhận</button></form>}
       {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
-        onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}
+        onDone={() => { setPanel(null); sync.kick(); }} />}
       {!localOnly && (panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
       {!localOnly && (panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
       {panel === 'signout' && <div className="stack"><p>Còn {view.operations.length} thay đổi chưa được cloud xác nhận. Đăng xuất sẽ giữ bản local riêng cho tài khoản này, không xóa; chỉ mở lại khi đăng nhập đúng tài khoản.</p><p>Trên máy dùng chung, không coi cache trình duyệt là dữ liệu đã mã hóa. Chưa có chức năng dọn cache trong bản thử này.</p>

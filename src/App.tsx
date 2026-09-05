@@ -2,6 +2,8 @@ import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from '
 import { authEvents, configured, projectId, signIn } from './cloud/supabase';
 import { deviceMemory, watchDeviceSession } from './cloud/device-access';
 import { Icon } from './ui/Icon';
+import { BrandMark } from './ui/BrandMark';
+import { LoadingScreen } from './ui/LoadingScreen';
 import { useTheme } from './ui/theme';
 
 const Account = lazy(() => import('./Account'));
@@ -32,14 +34,14 @@ export function App() {
     <ol><li>Cấu hình <code>VITE_SUPABASE_URL</code> cho frontend.</li><li>Cấu hình riêng các biến server theo <code>docs/auth-pwa.md</code>.</li>
       <li>Chạy migration và cấu hình callback Google, rồi redeploy hoặc khởi động lại dev server.</li></ol>
     <p className="muted">Không đưa secret key hoặc khóa mã hóa vào biến VITE_*.</p></main>;
-  if (!ready) return <main className="welcome"><p>Đang mở phiên trên thiết bị…</p></main>;
+  if (!ready) return <LoadingScreen detail="Đang mở phiên trên thiết bị…" />;
   if (!sessionKnown) return <main className="welcome"><span className="brand">nôi.</span><h1>Chưa khôi phục được phiên</h1>
     <p role="status">{message}</p><p>Ứng dụng sẽ tự thử lại, chưa cần đăng nhập lại Google.</p>
     {candidate && <><p>Chỉ mở trên thiết bị riêng: dữ liệu của tài khoản đã dùng trên máy chưa được mã hóa riêng. Đây không phải xác nhận quyền truy cập cloud.</p>
       <button className="primary" onClick={() => { setUserId(candidate); setLocalOnly(true); setSessionKnown(true); }}>Mở nhật ký trên thiết bị</button></>}
     <button onClick={() => authEvents.dispatchEvent(new Event('recheck'))}>Thử khôi phục phiên</button></main>;
-  if (userId) return <Suspense fallback={<main className="welcome">Đang mở nhật ký…</main>}><Account key={userId} userId={userId} localOnly={localOnly} /></Suspense>;
-  return <main className="welcome"><div className="welcome-top"><span className="brand"><span className="brand-mark" aria-hidden="true">n</span>nôi.</span>
+  if (userId) return <Suspense fallback={<LoadingScreen detail="Đang chuẩn bị giao diện nhật ký…" />}><Account key={userId} userId={userId} localOnly={localOnly} /></Suspense>;
+  return <main className="welcome"><div className="welcome-top"><span className="brand"><BrandMark />nôi.</span>
     <button className="icon-button theme-button" aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /></button></div>
     <span className="eyebrow">NHỮNG NGÀY ĐẦU, BÊN CON</span>
     <h1>Ít thao tác hơn.<br />Thêm thời gian <span>bên con.</span></h1><p>Nhật ký bú, ngủ và thay tã. Cả gia đình cùng chăm sóc, mỗi bé một không gian riêng.</p>

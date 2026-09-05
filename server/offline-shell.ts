@@ -8,7 +8,7 @@ export function offlineShell(): Plugin {
     generateBundle: {
       order: 'post',
       handler(_, bundle) {
-        const files = Object.keys(bundle).filter(name => name === 'index.html' || /^(assets\/.*\.(js|css)|icons\/noi-[0-9]+\.png)$/.test(name)).sort();
+        const files = Object.keys(bundle).filter(name => name === 'index.html' || /^(assets\/.*\.(js|css)|icons\/noi-v[0-9]+-[0-9]+\.png)$/.test(name)).sort();
         if (!files.includes('index.html') || !files.some(name => name.endsWith('.js'))) throw new Error('Missing app shell');
         const manifest = readFileSync(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8');
         const template = readFileSync(new URL('../src/pwa/worker.js', import.meta.url), 'utf8');

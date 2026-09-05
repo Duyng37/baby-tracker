@@ -59,6 +59,35 @@ it('avoids fixed footer offsets and retains short-screen, safe-area and reduced-
 it('wraps long baby names in summary headings instead of widening the scroll area', () => {
   expect(css).toContain('.section-heading > small { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }');
 });
+it('normalizes native date and time controls to the same bounded field size', () => {
+  const temporal = css.match(/input\[type="date"\], input\[type="time"\] \{([^}]+)\}/)?.[1];
+  expect(temporal).toBeDefined();
+  // 24px line height + 24px vertical padding + 2px border, like other fields.
+  expect(temporal).toContain('height: 50px');
+  expect(temporal).toContain('max-width: 100%');
+  expect(temporal).toContain('margin: 0');
+  expect(temporal).toContain('-webkit-appearance: none');
+  expect(temporal).toContain('appearance: none');
+});
+it('normalizes WebKit date/time internals without hiding the native picker', () => {
+  const value = css.match(/input::-webkit-date-and-time-value \{([^}]+)\}/)?.[1];
+  const edit = css.match(/input::-webkit-datetime-edit \{([^}]+)\}/)?.[1];
+  expect(value).toContain('min-height: 1.5em');
+  expect(value).toContain('text-align: left');
+  expect(edit).toContain('min-width: 0');
+  expect(edit).toContain('padding: 0');
+  expect(css).not.toMatch(/::-webkit-calendar-picker-indicator\s*\{[^}]*(?:display:\s*none|opacity:\s*0)/);
+});
+it('constrains field tracks and bottom-aligns wrapped labels while keeping narrow rows flexible', () => {
+  const label = css.match(/(?:^|\n)label \{([^}]+)\}/)?.[1];
+  const row = css.match(/\.row \{([^}]+)\}/)?.[1];
+  const rowLabel = css.match(/\.row > label \{([^}]+)\}/)?.[1];
+  expect(label).toContain('grid-template-columns: minmax(0, 1fr)');
+  expect(label).toContain('min-width: 0');
+  expect(row).toContain('flex-wrap: wrap');
+  expect(rowLabel).toContain('flex: 1 1 140px');
+  expect(rowLabel).toContain('align-self: flex-end');
+});
 it('keeps PWA launch colors and initial browser chrome aligned with the light canvas', () => {
   const manifest = JSON.parse(readFileSync(new URL('../../public/manifest.webmanifest', import.meta.url), 'utf8'));
   const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
@@ -66,6 +95,16 @@ it('keeps PWA launch colors and initial browser chrome aligned with the light ca
   expect(manifest.background_color).toBe(canvas);
   expect(manifest.theme_color).toBe(canvas);
   expect(html).toContain(`<meta name="theme-color" content="${canvas}"`);
+});
+it('keeps the compact journal date and activity controls equally tall with a bounded native picker', () => {
+  expect(css).toContain('.journal-filters select, .journal-date-text { height: 50px; }');
+  expect(css).toContain('.journal-filters > label, .journal-date-field { flex: 1 1 150px; }');
+  const picker = css.match(/\.journal-date-picker input \{([^}]+)\}/)?.[1];
+  expect(picker).toContain('position: absolute');
+  expect(picker).toContain('width: 100%');
+  expect(picker).toContain('height: 100%');
+  expect(picker).toContain('opacity: 0');
+  expect(css).toContain('.journal-date-picker:focus-within { outline: 2px solid var(--focus)');
 });
 it('keeps icon-only quick actions and their expand control in one row', () => {
   expect(css).toContain('.quick-recording[data-collapsed="true"] .quick-heading { display: none; }');
@@ -79,4 +118,20 @@ it('shows a fixed-size theme switch with distinct on/off positions and forced-co
   expect(css).toContain('.theme-setting[aria-checked="true"] .switch-thumb { transform: translateX(18px)');
   expect(css).toContain('.switch-thumb { background: ButtonText; forced-color-adjust: none; }');
   expect(css).toContain('.theme-setting[aria-checked="true"] .switch-thumb { background: HighlightText; }');
+});
+it('centers the startup splash within the app width and respects device safe areas', () => {
+  const splash = css.match(/\.loading-screen \{([^}]+)\}/)![1];
+  expect(splash).toContain('width: min(100%, 640px)');
+  expect(splash).toContain('min-height: 100dvh');
+  expect(splash).toContain('place-items: center');
+  expect(splash).toContain('env(safe-area-inset-top)');
+  expect(splash).toContain('env(safe-area-inset-bottom)');
+  expect(splash).toContain('background: var(--canvas)');
+});
+it('animates only loading spinners and only when reduced motion is not requested', () => {
+  const motion = css.indexOf('@media (prefers-reduced-motion: no-preference)');
+  expect(css.slice(0, motion)).not.toMatch(/animation:/);
+  expect(css.slice(motion)).toContain('.spinner { animation: loading-spin .85s linear infinite; }');
+  expect(css).not.toContain('.sync-button[data-busy="true"] .icon');
+  expect(css).toContain('.sync-button[data-busy="true"]:not([data-offline="true"]) { background: var(--tint); color: var(--soft-ink); opacity: 1; }');
 });

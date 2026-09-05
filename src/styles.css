@@ -44,12 +44,15 @@ input:disabled, select:disabled, textarea:disabled { background: var(--subtle); 
 input[readonly], textarea[readonly] { background: var(--subtle); }
 input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--danger); }
 input[type="date"], input[type="time"], input[type="number"] { font-variant-numeric: tabular-nums; }
-input[type="date"] { appearance: none; }
-input::-webkit-date-and-time-value { text-align: left; }
+/* Native date/time widgets must share the standard field height, including when empty on iOS. */
+input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; height: 50px; max-width: 100%; margin: 0; }
+input::-webkit-date-and-time-value { min-height: 1.5em; text-align: left; }
+input::-webkit-datetime-edit { min-width: 0; padding: 0; }
 input:-webkit-autofill { -webkit-text-fill-color: var(--ink); box-shadow: 0 0 0 1000px var(--surface) inset; }
 input:-webkit-autofill:focus { box-shadow: 0 0 0 1000px var(--surface) inset, 0 0 0 3px var(--focus-halo); }
 textarea { min-height: 112px; resize: vertical; }
-label { display: grid; gap: 8px; font-size: .8125rem; font-weight: 600; min-width: 0; }
+/* Constrain the grid track as well as the label so native controls cannot widen a form row. */
+label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; font-size: .8125rem; font-weight: 600; min-width: 0; }
 h1, h2, h3, p { margin: 0; overflow-wrap: anywhere; }
 h1 { font-size: clamp(1.65rem, 5vw, 2rem); letter-spacing: -.045em; line-height: 1.25; font-weight: 650; }
 h2 { font-size: 1rem; font-weight: 650; line-height: 1.4; }
@@ -76,6 +79,7 @@ code { overflow-wrap: anywhere; }
 .sync-control { position: relative; }
 .sync-button { color: var(--soft-ink); }
 .sync-button[data-warning="true"] { background: var(--warning-bg); color: var(--warning-ink); }
+.sync-button[data-busy="true"]:not([data-offline="true"]) { background: var(--tint); color: var(--soft-ink); opacity: 1; }
 .sync-tooltip { display: none; position: absolute; z-index: 2; right: 0; top: calc(100% + 8px); width: max-content; max-width: min(240px, 70vw); padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: .75rem; box-shadow: 0 4px 16px var(--shadow); pointer-events: none; }
 .sync-control:hover .sync-tooltip, .sync-control:focus-within .sync-tooltip { display: block; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
@@ -91,7 +95,7 @@ code { overflow-wrap: anywhere; }
 .section-heading .text-button { min-height: 44px; }
 .card { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; padding: 18px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.row > label { flex: 1 1 140px; }
+.row > label { flex: 1 1 140px; align-self: flex-end; }
 .row > button { flex-shrink: 0; }
 .form-row { align-items: flex-end; }
 .record-time { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
@@ -122,6 +126,16 @@ code { overflow-wrap: anywhere; }
 .disclaimer { display: flex; gap: 8px; align-items: flex-start; padding: 12px 0 0; }
 .disclaimer .icon { width: 16px; height: 16px; margin-top: 2px; color: var(--secondary); }
 .journal-filters { padding: 14px; margin-bottom: 14px; background: var(--subtle); border-radius: 14px; }
+.journal-filters > label, .journal-date-field { flex: 1 1 150px; }
+.journal-date-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; align-self: flex-end; }
+.journal-date-control { position: relative; min-width: 0; }
+.journal-filters select, .journal-date-text { height: 50px; }
+.journal-date-text { padding-left: 10px; padding-right: 46px; font-variant-numeric: tabular-nums; }
+.journal-date-picker { position: absolute; top: 1px; right: 1px; width: 44px; height: 48px; display: grid; place-items: center; border-radius: 11px; color: var(--soft-ink); }
+.journal-date-picker:focus-within { outline: 2px solid var(--focus); outline-offset: -3px; }
+/* Only the calendar trigger uses the native input; its localized text never affects layout. */
+.journal-date-picker input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; }
+.journal-date-picker input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; }
 .journal { list-style: none; padding: 0; margin: 0; }
 .journal li + li { border-top: 1px solid var(--line); }
 .event-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 76px; padding: 16px 4px; text-align: left; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-weight: 400; }
@@ -225,7 +239,15 @@ input::file-selector-button { font: inherit; border: 1px solid var(--line); bord
 .welcome ol { padding-left: 20px; }
 .welcome-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 2rem; font-weight: 750; letter-spacing: -.07em; color: var(--ink); }
-.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--accent-line); border-radius: 14px 14px 14px 4px; background: var(--tint); color: var(--soft-ink); font-family: Georgia, serif; font-style: italic; }
+.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--accent-line); border-radius: 14px 14px 14px 4px; background: var(--tint); color: var(--soft-ink); }
+.brand-mark > svg { display: block; width: 100%; height: 100%; }
+.loading-screen { width: min(100%, 640px); min-height: 100vh; min-height: 100dvh; margin: auto; display: grid; place-items: center; padding: max(40px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); background: var(--canvas); }
+.loading-content { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 100%; text-align: center; }
+.loading-mark { width: 72px; height: 72px; margin-bottom: 16px; border-radius: 24px 24px 24px 8px; font-size: 3rem; box-shadow: 0 0 0 10px var(--subtle); }
+.loading-brand { font-size: 2.5rem; line-height: 1.2; }
+.loading-tagline { color: var(--secondary); font-size: .8125rem; }
+.loading-status { display: flex; align-items: center; gap: 10px; max-width: 100%; margin-top: 24px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--secondary); font-size: .8125rem; }
+.loading-status .icon { width: 18px; height: 18px; color: var(--soft-ink); }
 .welcome-features { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 .welcome-features span { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--secondary); font-size: .6875rem; }
 .welcome-features .icon { width: 15px; height: 15px; color: var(--soft-ink); }
@@ -261,8 +283,8 @@ input::file-selector-button { font: inherit; border: 1px solid var(--line); bord
 @media (prefers-reduced-motion: no-preference) {
   button, input, select, textarea { transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, color .16s ease; }
   .switch-thumb { transition: transform .16s ease, background-color .16s ease; }
-  .sync-button[data-busy="true"] .icon { animation: sync-spin 1.2s linear infinite; }
-  @keyframes sync-spin { to { transform: rotate(360deg); } }
+  .spinner { animation: loading-spin .85s linear infinite; }
+  @keyframes loading-spin { to { transform: rotate(360deg); } }
   .sheet[open] { animation: sheet-in .2s ease-out; }
   @keyframes sheet-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 }

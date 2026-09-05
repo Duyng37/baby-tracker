@@ -17,6 +17,18 @@
   cần chuẩn bị trên chính PWA khi có mạng và chọn nhật ký local nếu chưa xác nhận phiên.
   Sync chờ xác thực lại; local user ID không phải credential. Hướng dẫn/giới hạn: [frontend](frontend.md).
 
+## Icon màn hình chính
+
+- Logo chữ **n** dùng chung hình vector cho màn hình đăng nhập, màn hình khởi động
+  và PNG PWA; không phụ thuộc font cài trên thiết bị hoặc máy build.
+- Android dùng PNG 192/512px trong manifest; iPhone dùng `apple-touch-icon` 180px.
+  Các tệp `noi-v2-*.png` thay icon trăng khuyết cũ và được cache cùng phiên bản giao diện.
+- Sau khi triển khai, mở app khi có mạng, đóng hết tab/PWA cũ rồi mở lại để nhận bản mới.
+  Icon trên màn hình chính do hệ điều hành quản lý nên có thể chưa cập nhật ngay,
+  đặc biệt với PWA đã cài trên iPhone; đổi URL ảnh không bảo đảm cập nhật icon đã cài.
+- **Không gỡ PWA hoặc xóa dữ liệu trình duyệt chỉ để đổi icon** nếu còn ghi nhận chưa
+  đồng bộ. Nếu cần cài lại để nhận icon mới, hãy đồng bộ và xuất bản sao lưu trước.
+
 ## Thiết kế
 
 1. Browser POST `/api/auth?action=start` cùng origin, có header `X-Noi-Client: 1`.

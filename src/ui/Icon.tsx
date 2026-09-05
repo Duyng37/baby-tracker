@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 const shapes = {
   today: <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" />,
   journal: <><rect x="5" y="3" width="15" height="18" rx="2" /><path d="M8 3v18M11 8h6M11 12h6M11 16h4M3 7h3M3 12h3M3 17h3" /></>,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 11h18" /></>,
   insights: <path d="M4 3v17h17M8 15v-4M13 15V6M18 15V9" />,
   family: <><circle cx="9" cy="7" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M17 13a5 5 0 0 1 4 5v3" /></>,
   breast: <path d="M4 9c-3 5 1 11 6 11h4c5 0 9-6 6-11M8 13c2 3 6 3 8 0M10 4a2 2 0 0 1 4 0v4h-4Z" />,
@@ -13,6 +14,7 @@ const shapes = {
   vaccination: <><path d="m14 4 6 6M17 3l4 4M18 6l-3 3M13 7l4 4-8 8H5v-4ZM5 19l-3 3M10 10l2 2M7 13l2 2" /></>,
   check: <path d="m5 12 4 4L19 6" />,
   cloud: <path d="M7 18H6a4 4 0 0 1-1-8 7 7 0 0 1 13-2 5 5 0 0 1 1 10h-2M9 16l3 3 4-5" />,
+  loading: <><circle cx="12" cy="12" r="9" opacity=".18" /><path d="M12 3a9 9 0 0 1 9 9" /></>,
   offline: <path d="m3 3 18 18M8 18H6a4 4 0 0 1-2-7M9 5a7 7 0 0 1 9 3 5 5 0 0 1 3 8M12 12v6M10 16l2 2 2-2" />,
   chevron: <path d="m9 5 7 7-7 7" />,
   down: <path d="m6 9 6 6 6-6" />,
@@ -27,6 +29,6 @@ const shapes = {
 
 export type IconName = keyof typeof shapes;
 export function Icon({ name, className = '' }: { name: IconName; className?: string }) {
-  return <svg className={`icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  return <svg className={`icon ${name === 'loading' ? 'spinner ' : ''}${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{shapes[name]}</svg>;
 }

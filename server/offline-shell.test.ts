@@ -4,7 +4,8 @@ import { expect, it, vi } from 'vitest';
 import { offlineShell } from './offline-shell';
 
 const origin = 'https://app.test';
-const files = ['/index.html', '/assets/main-a.js', '/assets/Account-a.js', '/assets/main-a.css', '/manifest.webmanifest'];
+const files = ['/index.html', '/assets/main-a.js', '/assets/Account-a.js', '/assets/main-a.css', '/manifest.webmanifest',
+  '/icons/noi-v2-180.png', '/icons/noi-v2-192.png', '/icons/noi-v2-512.png'];
 const cacheName = 'noi-shell-v1-test';
 function fixture() {
   const buckets = new Map<string, Map<string, Response>>();
@@ -21,7 +22,7 @@ function fixture() {
   const fetch = vi.fn(async (input: string | { url: string }) => {
     const path = new URL(key(input)).pathname;
     const type = path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css'
-      : path.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html';
+      : path.endsWith('.png') ? 'image/png' : path.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html';
     return new Response(`public-shell:${path}`, { headers: { 'Content-Type': type } });
   });
   const handlers = new Map<string, (event: unknown) => void>();
@@ -47,6 +48,9 @@ it('preloads the entire static shell including lazy Account before offline use',
   app.fetch.mockRejectedValue(new Error('offline'));
   expect(await (await app.request('/', 'navigate'))!.text()).toBe('public-shell:/index.html');
   expect(await (await app.request('/assets/Account-a.js'))!.text()).toBe('public-shell:/assets/Account-a.js');
+  for (const file of files.filter(file => file.endsWith('.png'))) {
+    expect(await (await app.request(file))!.text()).toBe(`public-shell:${file}`);
+  }
   expect(app.buckets.get(cacheName)?.size).toBe(files.length);
 });
 it('never intercepts Auth/RPC, external origins, unknown assets or POSTs', async () => {
@@ -90,11 +94,14 @@ it('activation removes only older app-shell versions, not unrelated caches or In
   expect(app.self.clients.claim).toHaveBeenCalledOnce();
 });
 it('build plugin includes emitted shell chunks, excludes API/maps, and changes cache version with content', () => {
-  const build = (html: string) => {
+  const build = (html: string, icon = 'brand-n') => {
     const emitFile = vi.fn();
     const bundle = { 'index.html': { type: 'asset', source: html }, 'assets/main-a.js': { type: 'chunk', code: 'main' },
       'assets/Account-a.js': { type: 'chunk', code: 'lazy account' }, 'assets/main-a.js.map': { type: 'asset', source: 'map' },
-      'api/auth.js': { type: 'chunk', code: 'not-public' } };
+      'api/auth.js': { type: 'chunk', code: 'not-public' },
+      'icons/noi-v2-180.png': { type: 'asset', source: icon },
+      'icons/noi-v2-192.png': { type: 'asset', source: icon },
+      'icons/noi-v2-512.png': { type: 'asset', source: icon } };
     // Minimal build fixture: the plugin only needs emitFile and emitted source/code.
     const hook = offlineShell().generateBundle as unknown as { handler: (this: { emitFile: typeof emitFile }, options: unknown, bundle: unknown, isWrite: boolean) => void };
     hook.handler.call({ emitFile }, {}, bundle, false);
@@ -103,6 +110,8 @@ it('build plugin includes emitted shell chunks, excludes API/maps, and changes c
   const one = build('<html>one</html>'), two = build('<html>two</html>');
   expect(one).toContain('/assets/Account-a.js'); expect(one).toContain('/manifest.webmanifest');
   expect(one).not.toContain('api/auth.js'); expect(one).not.toContain('.js.map');
+  for (const size of [180, 192, 512]) expect(one).toContain(`/icons/noi-v2-${size}.png`);
   expect(one.match(/noi-shell-v1-[a-f0-9]+/)![0]).not.toBe(two.match(/noi-shell-v1-[a-f0-9]+/)![0]);
+  expect(one.match(/noi-shell-v1-[a-f0-9]+/)![0]).not.toBe(build('<html>one</html>', 'updated-brand').match(/noi-shell-v1-[a-f0-9]+/)![0]);
   expect(one).not.toContain('__NOI_');
 });

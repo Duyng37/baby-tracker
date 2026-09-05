@@ -9,16 +9,18 @@ let online = true;
 let busy = false;
 let message = '';
 let familyScreen = false;
+let journalScreen = false;
 // SSR contract tests can inspect Family without needing a browser or changing app defaults.
 vi.mock('react', async original => {
   const react = await original<typeof import('react')>();
-  return { ...react, useState: (initial: unknown) => react.useState(initial === 'today' && familyScreen ? 'family' : initial) };
+  return { ...react, useState: (initial: unknown) => react.useState(initial === 'today' ? (familyScreen ? 'family' : journalScreen ? 'journal' : initial) : initial) };
 });
 vi.mock('../data/useStore', () => ({ useStore: () => current }));
 vi.mock('../sync/useSync', () => ({ useSync: () => ({ online, busy, message, kick: vi.fn() }) }));
 vi.mock('../cloud/supabase', () => ({ signOut: vi.fn(), authenticatedTransport: vi.fn() }));
 import { Tracker } from './Tracker';
 import { ThemeProvider } from './theme';
+import { Icon } from './Icon';
 
 const store = { db: { userId: 'test-owner' } } as LocalStore;
 const at = '2026-09-05T08:00:00.000Z';
@@ -26,7 +28,7 @@ const bottle: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', 
   body: { type: 'bottle', started_at: at, ended_at: null, note: 'Ghi nhận thử', deleted: false, payload: { amount_ml: 90, milk: 'formula' } } };
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T09:00:00.000Z'));
-  online = true; busy = false; message = ''; familyScreen = false;
+  online = true; busy = false; message = ''; familyScreen = false; journalScreen = false;
   current = { ready: true, error: false, events: [], operations: [], lastContact: null,
     workspace: { families: [{ id: 'family', name: 'Nhà của Bông', timezone: 'Asia/Ho_Chi_Minh', sync_cursor: '0' }],
       babies: [{ id: 'baby', family_id: 'family', nickname: 'Bông', birth_date: null }],
@@ -34,6 +36,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 const render = () => renderToStaticMarkup(<ThemeProvider><Tracker store={store} /></ThemeProvider>);
+const syncButton = (html: string) => html.match(/<button class="icon-button sync-button"[^>]*>[\s\S]*?<\/button>/)![0];
 
 it('renders four navigation destinations, labelled quick actions and a focusable main', () => {
   const html = render();
@@ -48,6 +51,14 @@ it('renders four navigation destinations, labelled quick actions and a focusable
 it('renders the dark-mode toggle consistently with a saved device preference', () => {
   vi.stubGlobal('window', { localStorage: { getItem: () => 'dark' }, matchMedia: () => ({ matches: false }) });
   expect(render()).toContain('aria-label="Bật chế độ sáng"');
+});
+it('shows a compact dd/mm/yyyy date beside the activity filter using the family timezone', () => {
+  journalScreen = true;
+  vi.setSystemTime(new Date('2026-09-05T18:30:00.000Z'));
+  const html = render();
+  expect(html).toMatch(/class="journal-date-text"[^>]*type="text"[^>]*value="06\/09\/2026"/);
+  expect(html).toMatch(/type="date"[^>]*aria-label="Chọn ngày xem nhật ký"[^>]*value="2026-09-06"/);
+  expect(html).toContain('<label>Hoạt động<select');
 });
 it('uses renamed workspace names in the header, picker trigger and quick actions', () => {
   current.workspace.families[0].name = 'Tên gia đình mới';
@@ -95,6 +106,8 @@ it('keeps onboarding separate from quick recording when there is no baby', () =>
 it('retains explicit loading and device storage error states', () => {
   current.ready = false;
   expect(render()).toContain('Đang mở dữ liệu trên thiết bị');
+  expect(render()).toContain('class="loading-screen"');
+  expect(render()).toContain('class="icon spinner ');
   current.ready = true; current.error = true;
   expect(render()).toContain('Chưa mở được bộ nhớ thiết bị');
   expect(render()).not.toContain('<footer');
@@ -124,22 +137,41 @@ it('places the icon-only sync control in the header instead of a separate status
   expect(header).toContain('Thử đồng bộ');
   expect(header).toContain('role="status"');
   expect(html).not.toContain('sync-bar');
+  expect(syncButton(html)).toContain(renderToStaticMarkup(<Icon name="cloud" />));
 });
 it('retains an accessible pending-sync label without claiming success', () => {
   current.operations = [{ family_id: 'family', baby_id: 'baby', operation_id: 'op', event_id: 'event', body: bottle.body, base_revision: null, depends_on: null }];
   const html = render();
   expect(html).toContain('1 thay đổi chờ cloud');
   expect(html).not.toContain('Đã đồng bộ lần gần nhất');
+  expect(syncButton(html)).toContain(renderToStaticMarkup(<Icon name="swap" />));
+  expect(syncButton(html)).not.toContain('spinner');
 });
 it('disables retry while syncing and exposes errors instead of a success state', () => {
   busy = true;
   expect(render()).toMatch(/class="icon-button sync-button"[^>]*data-busy="true"[^>]*disabled/);
   expect(render()).toContain('Đang đồng bộ…');
+  expect(syncButton(render())).toContain('aria-busy="true"');
+  expect(syncButton(render())).toContain(renderToStaticMarkup(<Icon name="loading" />));
+  expect(syncButton(render())).not.toContain(renderToStaticMarkup(<Icon name="swap" />));
   busy = false; message = 'Cần thử lại';
   const html = render();
   expect(html).toContain('data-warning="true"');
   expect(html).toContain('Chưa hoàn tất đồng bộ');
   expect(html).toContain('Cần thử lại');
+  expect(syncButton(html)).toContain(renderToStaticMarkup(<Icon name="info" />));
+  expect(syncButton(html)).not.toContain('spinner');
+});
+it('shows the spinner during retries even if an earlier error is still present', () => {
+  busy = true; message = 'Cần thử lại';
+  expect(syncButton(render())).toContain(renderToStaticMarkup(<Icon name="loading" />));
+});
+it('does not spin the offline icon when connectivity is lost during sync', () => {
+  busy = true; online = false;
+  const button = syncButton(render());
+  expect(button).toContain(renderToStaticMarkup(<Icon name="offline" />));
+  expect(button).toContain('aria-busy="false"');
+  expect(button).not.toContain('spinner');
 });
 it('integrates the vaccination schedule only in Family for the selected baby, including local-only caregivers', () => {
   const vaccination: LocalEvent = { ...bottle, body: { ...bottle.body, type: 'vaccination',
