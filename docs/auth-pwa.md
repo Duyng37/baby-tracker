@@ -13,8 +13,9 @@
 - Phiên localStorage của bản frontend cũ cần đăng nhập lại **một lần khi nâng cấp** sang BFF.
   Bản mới không đọc/chuyển token cũ sang server, không xóa IndexedDB. Phiên Google hiện có
   trong Chrome thường giúp tránh nhập mật khẩu, nhưng quyết định xác thực thuộc Google.
-- Manifest, PNG icons và iOS metadata đã có. **Chưa có service worker/offline cold start**;
-  ghi offline trong app đang mở vẫn hoạt động. Không tuyên bố offline-first MVP đã hoàn tất.
+- Manifest, PNG icons, iOS metadata và service worker cache giao diện đã có. Mở lại offline
+  cần chuẩn bị trên chính PWA khi có mạng và chọn nhật ký local nếu chưa xác nhận phiên.
+  Sync chờ xác thực lại; local user ID không phải credential. Hướng dẫn/giới hạn: [frontend](frontend.md).
 
 ## Thiết kế
 
@@ -114,7 +115,9 @@ quản trị phê duyệt trước khi tăng quy mô; chưa bật cron/garbage c
 - [ ] Logout web/PWA: bản còn lại bị ngắt ở request tiếp theo; outbox không bị xóa.
 - [ ] Hai tài khoản/hai gia đình: outbox A không gửi bằng quyền B, không nhìn thấy dữ liệu nhau.
 - [ ] Ghi offline khi app đang mở, khôi phục mạng; ACK đúng, không ghi trùng.
-- [ ] Mất mạng/503 lúc refresh: không hiện đăng xuất giả. Cold start offline chưa được hỗ trợ.
+- [ ] Mất mạng/503 lúc refresh: không hiện đăng xuất giả. Cold start sau khi đã cache → chủ động mở
+  nhật ký local → ghi/xuất backup → reconnect → xác thực lại → ACK, không mất/trùng ghi nhận.
+- [ ] Tải/nhập backup trên iPhone/Android: đúng account/project, không ghi đè; kiểm tra tệp lớn và hết quota.
 - [ ] Kiểm tra API/redirect/migration trên Vercel thật; không gửi cookie/headers/token trong ảnh chụp.
 
 Kiểm thử tự động: `npm test`, `npm run test:db`, `npm run build`. Có test HTTP loopback,

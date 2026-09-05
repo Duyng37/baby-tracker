@@ -82,3 +82,17 @@ it('retains explicit loading and device storage error states', () => {
   expect(render()).toContain('Chưa mở được bộ nhớ thiết bị');
   expect(render()).not.toContain('<footer');
 });
+it('local-only access never claims cloud verification and keeps quick recording available', () => {
+  const html = renderToStaticMarkup(<ThemeProvider><Tracker store={store} localOnly /></ThemeProvider>);
+  expect(html).toContain('Chỉ trên thiết bị · chưa xác nhận phiên cloud');
+  expect(html).toContain('Kiểm tra phiên');
+  expect(html).not.toMatch(/class="quick-button"[^>]*disabled/);
+  expect(html).not.toContain('Đã đồng bộ lần gần nhất');
+});
+it('does not offer offline onboarding when the account has no cached workspace', () => {
+  current.workspace = { families: [], babies: [], memberships: [] };
+  const html = renderToStaticMarkup(<ThemeProvider><Tracker store={store} localOnly /></ThemeProvider>);
+  expect(html).toContain('Chưa có hồ sơ khả dụng trên máy');
+  expect(html).not.toContain('Tên gọi của bé');
+  expect(html).toContain('Sao lưu và khôi phục');
+});

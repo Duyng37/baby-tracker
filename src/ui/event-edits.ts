@@ -1,15 +1,8 @@
 import type { LocalStore } from '../data/store';
 import { DataError } from '../domain/events';
 import type { EventBody, LocalEvent } from '../domain/types';
-
-/** Compare content, not object-key order, timestamp spelling, or ACK-only local versions. */
-export function eventBodyKey(body: EventBody) {
-  const time = (value: string | null) => value === null ? null : Date.parse(value);
-  const payload = body.type === 'bottle' ? [body.payload.amount_ml, body.payload.milk]
-    : body.type === 'diaper' ? [body.payload.kind]
-    : body.type === 'breast' ? body.payload.segments.map(segment => [segment.side, time(segment.started_at), time(segment.ended_at)]) : [];
-  return JSON.stringify([body.type, time(body.started_at), time(body.ended_at), body.note, body.deleted, payload]);
-}
+import { eventBodyKey } from '../domain/event-key';
+export { eventBodyKey } from '../domain/event-key';
 
 export async function saveUnchangedEvent(store: LocalStore, before: LocalEvent, after: EventBody) {
   // Check and save atomically. A genuine edit, deletion, revoked scope or conflict still blocks the write.

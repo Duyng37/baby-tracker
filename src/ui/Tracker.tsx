@@ -14,20 +14,23 @@ import { eventDetail, Journal, journalEvents } from './Journal';
 import { Metrics } from './Metrics';
 import { useTheme } from './theme';
 import { saveUnchangedEvent } from './event-edits';
+import { authEvents } from '../cloud/supabase';
+import { BackupPanel } from './BackupPanel';
+import { OfflineSettings } from './OfflineSettings';
 
 type Screen = 'today' | 'journal' | 'insights' | 'family';
-type Panel = null | 'switch' | 'bottle' | 'diaper' | 'breast' | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | LocalEvent;
+type Panel = null | 'switch' | 'bottle' | 'diaper' | 'breast' | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | LocalEvent;
 const screens: [Screen, string][] = [['today', 'Hôm nay'], ['journal', 'Nhật ký'], ['insights', 'Tổng quan'], ['family', 'Gia đình']];
 const descriptions: Record<Screen, string> = {
   today: 'Từng điều nhỏ, cùng con lớn lên.', journal: 'Nhớ giúp bạn những nhịp sinh hoạt của con.',
   insights: 'Nhìn lại nhẹ nhàng, không so sánh.', family: 'Cùng nhau chăm bé, sẻ chia mỗi ngày.',
 };
 const panelTitles = { switch: 'Chọn bé', bottle: 'Ghi bình sữa', diaper: 'Thay tã', breast: 'Bắt đầu bú mẹ',
-  'new-family': 'Thêm gia đình', 'new-baby': 'Thêm bé', invite: 'Mời người chăm sóc', join: 'Tham gia gia đình', signout: 'Đăng xuất trên thiết bị' };
+  'new-family': 'Thêm gia đình', 'new-baby': 'Thêm bé', invite: 'Mời người chăm sóc', join: 'Tham gia gia đình', signout: 'Đăng xuất trên thiết bị', backup: 'Sao lưu và khôi phục' };
 
-export function Tracker({ store }: { store: LocalStore }) {
+export function Tracker({ store, localOnly = false }: { store: LocalStore; localOnly?: boolean }) {
   const view = useStore(store);
-  const sync = useSync(store);
+  const sync = useSync(store, !localOnly);
   const { theme, toggleTheme } = useTheme();
   const content = useRef<HTMLElement>(null);
   const [screen, setScreen] = useState<Screen>('today');
@@ -117,7 +120,7 @@ export function Tracker({ store }: { store: LocalStore }) {
   const visible = journalEvents(events, screen === 'today' ? today : date || today, timezone, screen === 'today' ? 'all' : filter);
   const summary = summarize(events, now - 86_400_000, now);
   const timeLabel = (time: string) => new Intl.DateTimeFormat('vi', { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(new Date(time));
-  const syncLabel = !sync.online ? 'Offline · ghi trên máy vẫn hoạt động' : sync.busy ? 'Đang đồng bộ…'
+  const syncLabel = localOnly ? 'Chỉ trên thiết bị · chưa xác nhận phiên cloud' : !sync.online ? 'Offline · ghi trên máy vẫn hoạt động' : sync.busy ? 'Đang đồng bộ…'
     : sync.message ? 'Chưa hoàn tất đồng bộ'
     : pending.length ? `${pending.length} thay đổi chờ cloud` : view.lastContact ? 'Đã đồng bộ lần gần nhất' : 'Chưa xác nhận cloud';
 
@@ -132,14 +135,15 @@ export function Tracker({ store }: { store: LocalStore }) {
         {baby && <Icon name="down" />}</button>
       <button className="icon-button theme-button" aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /></button>
     </header>
-    <div className="sync-bar" data-offline={!sync.online}><span className="sync-status" role="status"><Icon name={sync.online ? 'cloud' : 'offline'} /><span>{syncLabel}{view.lastContact && !pending.length ? ` · ${timeLabel(new Date(view.lastContact).toISOString())}` : ''}</span></span>
-      <button className="text-button" onClick={sync.kick} disabled={sync.busy || !sync.online}>{sync.busy ? 'Đang gửi…' : 'Thử đồng bộ'}</button></div>
+    <div className="sync-bar" data-offline={localOnly || !sync.online}><span className="sync-status" role="status"><Icon name={!localOnly && sync.online ? 'cloud' : 'offline'} /><span>{syncLabel}{!localOnly && view.lastContact && !pending.length ? ` · ${timeLabel(new Date(view.lastContact).toISOString())}` : ''}</span></span>
+      <button className="text-button" onClick={() => localOnly ? authEvents.dispatchEvent(new Event('recheck')) : sync.kick()} disabled={sync.busy || (!localOnly && !sync.online)}>{localOnly ? 'Kiểm tra phiên' : sync.busy ? 'Đang gửi…' : 'Thử đồng bộ'}</button></div>
     <main id="content" className="content" ref={content} tabIndex={-1} aria-label={screens.find(([key]) => key === screen)![1]}>
+      {localOnly && <p className="banner">Đang dùng dữ liệu đã lưu trên thiết bị. Ghi nhận mới vẫn được giữ trên máy; đồng bộ và quản lý gia đình chờ xác thực lại. Quyền truy cập cloud có thể đã thay đổi.</p>}
       {sync.message && <p className="banner" role="status">{sync.message}</p>}
       {conflicted > 0 && <p className="banner" role="alert">{conflicted} bản ghi có xung đột/lỗi. Cả bản local và phản hồi cloud được giữ; chưa có màn hình giải quyết trong bản thử này.</p>}
       {quarantined > 0 && <p className="banner">Có {quarantined} thay đổi được cách ly vì quyền gia đình không còn khả dụng. Không tự xóa dữ liệu.</p>}
-      {!baby ? <section className="card stack"><span className="eyebrow">CHÀO MỪNG ĐẾN VỚI NÔI</span><h1>Gia đình của bạn</h1><OnlineSetup store={store} onDone={sync.kick} />
-        <div className="row"><button onClick={() => openPanel('join')}>Tôi có mã mời</button><button className="text-button" onClick={() => openPanel('signout')}>Đăng xuất</button></div></section>
+      {!baby ? <section className="card stack"><span className="eyebrow">CHÀO MỪNG ĐẾN VỚI NÔI</span><h1>Gia đình của bạn</h1>{localOnly ? <p>Chưa có hồ sơ khả dụng trên máy. Kết nối mạng và xác nhận phiên để tải nhật ký hoặc tạo gia đình.</p> : <OnlineSetup store={store} onDone={sync.kick} />}
+        <div className="row"><button disabled={localOnly} onClick={() => openPanel('join')}>Tôi có mã mời</button><button onClick={() => openPanel('backup')}>Sao lưu và khôi phục</button><button className="text-button" onClick={() => openPanel('signout')}>Đăng xuất</button></div></section>
         : <>
           <div className="page-title"><span className="eyebrow">{new Intl.DateTimeFormat('vi', { dateStyle: 'full', timeZone: timezone }).format(now)}</span><h1>{screens.find(([key]) => key === screen)![1]}</h1><p>{descriptions[screen]}</p></div>
           {active.length > 0 && <section aria-label="Timer trong gia đình" className="timers">{active.map(event => <article className="timer card" key={event.id}>
@@ -160,17 +164,19 @@ export function Tracker({ store }: { store: LocalStore }) {
             {!visible.length && <div className="empty"><Icon name="journal" /><h3>{screen === 'journal' ? 'Chưa có hoạt động phù hợp.' : 'Một khoảng trống nhỏ, sẵn sàng để ghi.'}</h3><p>{screen === 'journal' ? 'Thử chọn ngày hoặc hoạt động khác. Các nút bên dưới luôn ghi cho thời điểm hiện tại.' : `Chạm một trong bốn nút bên dưới để ghi cho ${baby.nickname}.`}</p></div>}
             <Journal events={visible} timezone={timezone} onSelect={openPanel} />
           </section>}
-          {screen === 'insights' && <section className="card stack"><div className="section-heading"><h2>7 ngày gần nhất</h2><Icon name="insights" /></div><p>Đã ghi {events.filter(e => !e.body.deleted && Date.parse(e.body.started_at) >= now - 7 * 86_400_000).length} hoạt động cho {baby.nickname}.</p><p className="muted">Mỗi ghi nhận là một chút an tâm. Biểu đồ theo ngày và xuất dữ liệu sẽ được bổ sung; không tổng hợp lẫn các bé.</p></section>}
+          {screen === 'insights' && <section className="card stack"><div className="section-heading"><h2>7 ngày gần nhất</h2><Icon name="insights" /></div><p>Đã ghi {events.filter(e => !e.body.deleted && Date.parse(e.body.started_at) >= now - 7 * 86_400_000).length} hoạt động cho {baby.nickname}.</p><p className="muted">Mỗi ghi nhận là một chút an tâm. Biểu đồ theo ngày sẽ được bổ sung; bạn có thể xuất bản sao lưu ở màn Gia đình.</p></section>}
           {screen === 'family' && <section className="stack"><article className="card stack"><div className="profile-card"><span className="avatar"><Icon name="family" /></span><div><h2>{family?.name}</h2><p>{own ? 'Chủ gia đình' : 'Người chăm sóc'} · {view.workspace.memberships.filter(m => m.family_id === family?.id).length} thành viên</p></div></div>
             <ul className="baby-list" aria-label="Các bé trong gia đình">{view.workspace.babies.filter(b => b.family_id === family?.id).map(b => <li key={b.id}>{b.nickname}</li>)}</ul>
-            {own && <div className="row"><button onClick={() => openPanel('new-baby')}><Icon name="plus" />Thêm bé</button><button onClick={() => openPanel('invite')}><Icon name="family" />Mời người chăm sóc</button></div>}</article>
+            {own && <div className="row"><button disabled={localOnly} onClick={() => openPanel('new-baby')}><Icon name="plus" />Thêm bé</button><button disabled={localOnly} onClick={() => openPanel('invite')}><Icon name="family" />Mời người chăm sóc</button></div>}</article>
             <div className="settings-group">
-              <button className="setting-row" onClick={() => openPanel('new-family')}><Icon name="plus" /><span><strong>Tạo gia đình khác</strong><small>Mỗi gia đình một không gian riêng</small></span><Icon name="chevron" /></button>
-              <button className="setting-row" onClick={() => openPanel('join')}><Icon name="family" /><span><strong>Nhận lời mời</strong><small>Cùng người thân chăm sóc bé</small></span><Icon name="chevron" /></button>
+              <button className="setting-row" disabled={localOnly} onClick={() => openPanel('new-family')}><Icon name="plus" /><span><strong>Tạo gia đình khác</strong><small>Mỗi gia đình một không gian riêng</small></span><Icon name="chevron" /></button>
+              <button className="setting-row" disabled={localOnly} onClick={() => openPanel('join')}><Icon name="family" /><span><strong>Nhận lời mời</strong><small>Cùng người thân chăm sóc bé</small></span><Icon name="chevron" /></button>
+              <button className="setting-row" onClick={() => openPanel('backup')}><Icon name="journal" /><span><strong>Sao lưu và khôi phục</strong><small>Tệp riêng trên máy · không ghi đè nhật ký</small></span><Icon name="chevron" /></button>
               <button className="setting-row" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /><span><strong>Chế độ ban đêm</strong><small>{theme === 'dark' ? 'Đang bật · chạm để dùng giao diện sáng' : 'Đang tắt · dịu mắt khi chăm bé lúc khuya'}</small></span><Icon name="chevron" /></button>
             </div>
             <div className="settings-group"><button className="setting-row danger" onClick={() => openPanel('signout')}><Icon name="logout" /><span><strong>Đăng xuất</strong><small>Giữ lại dữ liệu chưa gửi trên thiết bị</small></span><Icon name="chevron" /></button></div>
-            <div className="disclaimer"><Icon name="info" /><p className="muted">Bản thử nghiệm: dữ liệu lưu IndexedDB rồi gửi Supabase. Chưa có cache PWA để mở lại app khi mất mạng; chưa có backup/restore. Không dùng dữ liệu bé thật lúc này.</p></div>
+            <OfflineSettings />
+            <div className="disclaimer"><Icon name="info" /><p className="muted">Dữ liệu được lưu trên thiết bị rồi đồng bộ với Supabase. Hãy giữ bản sao lưu riêng; đồng bộ không thay thế sao lưu. Xung đột đồng bộ cần được kiểm tra, app không tự chọn bản thắng.</p></div>
           </section>}
         </>}
     </main>
@@ -192,8 +198,9 @@ export function Tracker({ store }: { store: LocalStore }) {
       {panel === 'diaper' && <div className="stack"><p className="sheet-intro">Tã của con thế nào? Chạm một lựa chọn để ghi lại ngay.</p><div className="presets">{[['wet', 'Ướt'], ['dirty', 'Bẩn'], ['mixed', 'Cả hai']].map(([kind, label]) => <button key={kind} disabled={saving} onClick={() => record('diaper', kind)}><Icon name="diaper" />{label}</button>)}</div></div>}
       {panel === 'breast' && <div className="stack"><p className="sheet-intro">Con bắt đầu bú bên nào? Bạn có thể đổi bên khi đang ghi.</p><div className="presets presets--two"><button disabled={saving} onClick={() => create(startTimer('breast', 'left'))}><Icon name="breast" />Bên trái</button><button disabled={saving} onClick={() => create(startTimer('breast', 'right'))}><Icon name="breast" />Bên phải</button></div></div>}
       {typeof panel === 'object' && <form className="stack" onSubmit={e => { e.preventDefault(); change(panel, { ...panel.body, note: String(new FormData(e.currentTarget).get('note') ?? '') }); }}><div className="card stack"><p className="sheet-intro">{labels[panel.body.type]} · {timeLabel(panel.body.started_at)}</p><p>{eventDetail(panel.body)}</p></div><label>Ghi chú<textarea name="note" maxLength={500} placeholder="Một điều nhỏ bạn muốn nhớ…" defaultValue={panel.body.note} /></label><button className="primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu trên máy'}</button><button type="button" className="danger-button" disabled={saving} onClick={() => change(panel, { ...panel.body, deleted: true }, true)}>Xóa ghi nhận</button></form>}
-      {(panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
-      {(panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
+      {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
+      {!localOnly && (panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
+      {!localOnly && (panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
       {panel === 'signout' && <div className="stack"><p>Còn {view.operations.length} thay đổi chưa được cloud xác nhận. Đăng xuất sẽ giữ bản local riêng cho tài khoản này, không xóa; chỉ mở lại khi đăng nhập đúng tài khoản.</p><p>Trên máy dùng chung, không coi cache trình duyệt là dữ liệu đã mã hóa. Chưa có chức năng dọn cache trong bản thử này.</p>
         <p>Nếu web và ứng dụng màn hình chính dùng chung phiên từ lúc cài, đăng xuất sẽ ngắt phiên của cả hai. Cần mạng để xác nhận đăng xuất.</p>
         <button className="primary" onClick={() => { void signOut().catch(() => setNotice('Chưa đăng xuất được. Vui lòng thử lại khi có mạng.')); }}>Đăng xuất, giữ dữ liệu chưa gửi</button></div>}

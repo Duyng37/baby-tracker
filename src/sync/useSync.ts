@@ -3,7 +3,7 @@ import { authenticatedTransport } from '../cloud/supabase';
 import type { LocalStore } from '../data/store';
 import { CloudError, retryDelay, synchronize } from './engine';
 
-export function useSync(store: LocalStore) {
+export function useSync(store: LocalStore, enabled = true) {
   const [status, setStatus] = useState({ busy: false, message: '', online: navigator.onLine });
   const trigger = useRef<() => void>(() => {});
   useEffect(() => {
@@ -13,7 +13,7 @@ export function useSync(store: LocalStore) {
     let requested = false;
     let attempts = 0;
     async function run() {
-      if (lifetime.signal.aborted) return;
+      if (lifetime.signal.aborted || !enabled) return;
       if (running) { requested = true; return; }
       clearTimeout(timer);
       setStatus(s => ({ ...s, online: navigator.onLine }));
@@ -56,6 +56,6 @@ export function useSync(store: LocalStore) {
       window.removeEventListener('online', run); window.removeEventListener('offline', onOffline);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [store]);
-  return { ...status, kick: () => trigger.current() };
+  }, [store, enabled]);
+  return { ...status, busy: enabled && status.busy, kick: () => trigger.current() };
 }
