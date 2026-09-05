@@ -22,10 +22,19 @@ export function validateBody(body: EventBody, now = Date.now()) {
   keys(body, ['type', 'started_at', 'ended_at', 'payload', 'note', 'deleted']);
   const start = time(body.started_at);
   const end = body.ended_at === null ? null : time(body.ended_at);
-  if (start > now + 300_000 || (end !== null && (end < start || end > now + 300_000))) throw new DataError('Hãy kiểm tra giờ bắt đầu/kết thúc.');
+  const planned = body.type === 'vaccination' && body.payload?.status === 'planned';
+  if ((!planned && start > now + 300_000) || (end !== null && (end < start || end > now + 300_000))) throw new DataError('Hãy kiểm tra giờ bắt đầu/kết thúc.');
   if (typeof body.note !== 'string' || [...body.note].length > 500 || typeof body.deleted !== 'boolean'
     || !body.payload || typeof body.payload !== 'object' || Array.isArray(body.payload)) throw new DataError();
   switch (body.type) {
+    case 'vaccination': {
+      keys(body.payload, ['vaccine', 'dose', 'status', 'location']);
+      const { vaccine, dose, status, location } = body.payload;
+      if (end !== null || typeof vaccine !== 'string' || !vaccine.trim() || [...vaccine].length > 120
+        || typeof dose !== 'string' || [...dose].length > 40 || typeof location !== 'string' || [...location].length > 160
+        || !['planned', 'completed'].includes(status)) throw new DataError('Thông tin tiêm chủng chưa hợp lệ.');
+      break;
+    }
     case 'bottle':
       keys(body.payload, ['amount_ml', 'milk']);
       if (end !== null || !Number.isFinite(body.payload.amount_ml) || body.payload.amount_ml <= 0

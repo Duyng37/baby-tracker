@@ -1,12 +1,12 @@
 import { useId, useState } from 'react';
 import { DataError } from '../domain/events';
 import { dayKey } from '../domain/summary';
-import type { EventBody } from '../domain/types';
+import type { EventBody, QuickEventType } from '../domain/types';
 import { Icon } from './Icon';
 import { quickRecord, type DiaperKind, type Milk, type QuickChoice } from './quick-record';
 
 export function QuickRecord({ type, running, timezone, saving, milk, onMilkChange, onSave }: {
-  type: EventBody['type']; running?: EventBody; timezone: string; saving: boolean;
+  type: QuickEventType; running?: EventBody; timezone: string; saving: boolean;
   milk: Milk; onMilkChange: (milk: Milk) => void; onSave: (body: EventBody) => void;
 }) {
   const [date, setDate] = useState('');

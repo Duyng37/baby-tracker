@@ -19,6 +19,22 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 - Tạo/nhận mã mời caregiver; token chỉ ở bộ nhớ UI, không vào IndexedDB hoặc URL.
 - PWA cache giao diện để mở lại khi mất mạng; xuất/khôi phục sao lưu JSON trong màn Gia đình.
 
+## Lịch tiêm chủng
+
+- Trong **Gia đình → Lịch tiêm chủng**, xem lịch của bé đang chọn; đổi bé ở đầu trang.
+- **Lên lịch tiêm** để nhập lịch dự kiến, hoặc **Ghi mũi đã tiêm** để ghi bù lịch sử.
+  Nhập tên vắc-xin, ngày/giờ theo múi giờ gia đình; mũi số, nơi tiêm và ghi chú tùy chọn.
+- Lịch dự kiến xếp ngày tăng dần, lịch đã tiêm xếp ngày giảm dần. Lịch qua ngày hẹn vẫn
+  giữ trạng thái dự kiến, không tự suy đoán bé đã tiêm hay bỏ lỡ mũi.
+- **Đã tiêm** trên một lịch hẹn mở form xác nhận thời điểm thực tế (mặc định hiện tại),
+  cập nhật cùng bản ghi thay vì tạo mũi trùng. Có chỉnh sửa và xóa/hoàn tác.
+- Chủ gia đình và người chăm sóc đều có thể ghi offline. Lịch dùng event/outbox, quyền
+  gia đình, kiểm tra xung đột và sao lưu JSON hiện có; không tính vào thống kê sinh hoạt.
+- Chưa gửi nhắc tự động, không đề xuất phác đồ hoặc thay thế chỉ định cơ sở tiêm chủng.
+- **Triển khai:** áp dụng `supabase/migrations/202609050006_vaccinations.sql` trước bản
+  frontend mới. Build Vercel không tự chạy migration. Đóng các tab/PWA cũ rồi mở lại;
+  client cũ không đọc được event `vaccination`. Chưa tự áp dụng migration lên cloud.
+
 ## Giao diện & theme
 
 - Dùng cùng ngôn ngữ thiết kế với wireframes: nền kem, xanh sage, icon SVG nét mảnh,

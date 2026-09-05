@@ -8,6 +8,12 @@ let current: StoreView;
 let online = true;
 let busy = false;
 let message = '';
+let familyScreen = false;
+// SSR contract tests can inspect Family without needing a browser or changing app defaults.
+vi.mock('react', async original => {
+  const react = await original<typeof import('react')>();
+  return { ...react, useState: (initial: unknown) => react.useState(initial === 'today' && familyScreen ? 'family' : initial) };
+});
 vi.mock('../data/useStore', () => ({ useStore: () => current }));
 vi.mock('../sync/useSync', () => ({ useSync: () => ({ online, busy, message, kick: vi.fn() }) }));
 vi.mock('../cloud/supabase', () => ({ signOut: vi.fn(), authenticatedTransport: vi.fn() }));
@@ -20,7 +26,7 @@ const bottle: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', 
   body: { type: 'bottle', started_at: at, ended_at: null, note: 'Ghi nhận thử', deleted: false, payload: { amount_ml: 90, milk: 'formula' } } };
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T09:00:00.000Z'));
-  online = true; busy = false; message = '';
+  online = true; busy = false; message = ''; familyScreen = false;
   current = { ready: true, error: false, events: [], operations: [], lastContact: null,
     workspace: { families: [{ id: 'family', name: 'Nhà của Bông', timezone: 'Asia/Ho_Chi_Minh', sync_cursor: '0' }],
       babies: [{ id: 'baby', family_id: 'family', nickname: 'Bông', birth_date: null }],
@@ -134,4 +140,17 @@ it('disables retry while syncing and exposes errors instead of a success state',
   expect(html).toContain('data-warning="true"');
   expect(html).toContain('Chưa hoàn tất đồng bộ');
   expect(html).toContain('Cần thử lại');
+});
+it('integrates the vaccination schedule only in Family for the selected baby, including local-only caregivers', () => {
+  const vaccination: LocalEvent = { ...bottle, body: { ...bottle.body, type: 'vaccination',
+    payload: { vaccine: 'Vắc-xin của Bông', dose: 'Mũi 1', status: 'planned', location: '' } } };
+  current.events = [vaccination, { ...vaccination, id: 'foreign', baby_id: 'sibling', body: { ...vaccination.body, note: 'FOREIGN_VACCINATION' } }];
+  expect(render()).not.toContain('Lịch tiêm chủng');
+  familyScreen = true; online = false; current.workspace.memberships[0].role = 'caregiver';
+  const html = renderToStaticMarkup(<ThemeProvider><Tracker store={store} localOnly /></ThemeProvider>);
+  expect(html).toContain('Lịch tiêm chủng'); expect(html).toContain('Vắc-xin của Bông');
+  expect(html).not.toContain('FOREIGN_VACCINATION');
+  expect(html).toContain('Lên lịch tiêm'); expect(html).toContain('Ghi mũi đã tiêm');
+  const schedule = html.match(/<article[^>]*vaccination-schedule[\s\S]*?<\/article>/)![0];
+  expect(schedule).not.toContain('disabled');
 });

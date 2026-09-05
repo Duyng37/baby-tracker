@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import type { EventBody, LocalEvent } from '../domain/types';
+import type { QuickEventType, LocalEvent } from '../domain/types';
 import { Icon } from './Icon';
 
 const preferenceKey = 'noi:quick-collapsed';
@@ -8,13 +8,13 @@ function readCollapsed() {
 }
 
 export function QuickActions({ babyName, running, saving, onAction }: {
-  babyName: string; running: LocalEvent[]; saving: boolean; onAction: (type: EventBody['type']) => void;
+  babyName: string; running: LocalEvent[]; saving: boolean; onAction: (type: QuickEventType) => void;
 }) {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const id = useId();
   const breast = running.some(event => event.body.type === 'breast');
   const sleep = running.some(event => event.body.type === 'sleep');
-  const actions: { type: EventBody['type']; label: string; hint: string; active?: boolean }[] = [
+  const actions: { type: QuickEventType; label: string; hint: string; active?: boolean }[] = [
     { type: 'breast', label: breast ? 'Kết thúc bú' : 'Bú mẹ', hint: breast ? 'Chọn thời điểm kết thúc' : 'Bắt đầu bên trái / phải', active: breast },
     { type: 'bottle', label: 'Bình sữa', hint: 'Ghi lượng sữa của con' },
     { type: 'diaper', label: 'Thay tã', hint: 'Ướt, bẩn hoặc cả hai' },

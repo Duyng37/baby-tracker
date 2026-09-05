@@ -5,7 +5,7 @@ import type { EventBody, LocalEvent } from '../domain/types';
 import { Icon } from './Icon';
 
 export function journalEvents(events: LocalEvent[], day: string, timezone: string, filter = 'all') {
-  return events.filter(event => !event.body.deleted && (filter === 'all' || event.body.type === filter)
+  return events.filter(event => !event.body.deleted && event.body.type !== 'vaccination' && (filter === 'all' || event.body.type === filter)
     && dayKey(Date.parse(event.body.started_at), timezone) === day)
     .sort((a, b) => Date.parse(b.body.started_at) - Date.parse(a.body.started_at));
 }
@@ -13,6 +13,7 @@ export function journalEvents(events: LocalEvent[], day: string, timezone: strin
 export function eventDetail(body: EventBody) {
   if (body.type === 'bottle') return `${body.payload.amount_ml} ml · ${{ formula: 'Sữa công thức', breast_milk: 'Sữa mẹ vắt', mixed: 'Hỗn hợp' }[body.payload.milk]}`;
   if (body.type === 'diaper') return { wet: 'Tã ướt', dirty: 'Tã bẩn', mixed: 'Cả hai' }[body.payload.kind];
+  if (body.type === 'vaccination') return `${body.payload.vaccine} · ${body.payload.status === 'planned' ? 'Dự kiến' : 'Đã tiêm'}`;
   return body.ended_at ? duration(Date.parse(body.ended_at) - Date.parse(body.started_at)) : 'Đang diễn ra';
 }
 

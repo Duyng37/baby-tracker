@@ -1,7 +1,7 @@
 import { DataError } from '../domain/events';
 
 /** Resolve optional wall-clock fields in the family's timezone, never the device's. */
-export function recordingTime(date: string, time: string, timezone: string, now = Date.now()): number {
+export function recordingTime(date: string, time: string, timezone: string, now = Date.now(), options: { allowFuture?: boolean } = {}): number {
   if (!date && !time) return now;
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit',
     day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
@@ -28,6 +28,6 @@ export function recordingTime(date: string, time: string, timezone: string, now 
   }).filter(at => wallTime(at) === target);
   if (!candidates.length) throw new DataError('Giờ này không tồn tại trong múi giờ gia đình. Vui lòng chọn giờ khác.');
   const result = Math.min(...candidates) + (time ? 0 : now % 1000);
-  if (result > now + 300_000) throw new DataError('Không thể ghi nhận thời gian trong tương lai.');
+  if (!options.allowFuture && result > now + 300_000) throw new DataError('Không thể ghi nhận thời gian trong tương lai.');
   return result;
 }

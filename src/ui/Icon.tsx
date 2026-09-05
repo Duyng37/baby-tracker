@@ -10,6 +10,7 @@ const shapes = {
   bottle: <path d="M10 3h4v3h-4zM8 6h8v3H8zM8 9l-2 4v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6l-2-4M13 13h4M13 16h4" />,
   sleep: <><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" /><path d="M17 3v4M15 5h4" /></>,
   diaper: <path d="M3 6h18l-2 12a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3ZM3 10h18M5 12c4 0 5 4 5 8M19 12c-4 0-5 4-5 8" />,
+  vaccination: <><path d="m14 4 6 6M17 3l4 4M18 6l-3 3M13 7l4 4-8 8H5v-4ZM5 19l-3 3M10 10l2 2M7 13l2 2" /></>,
   check: <path d="m5 12 4 4L19 6" />,
   cloud: <path d="M7 18H6a4 4 0 0 1-1-8 7 7 0 0 1 13-2 5 5 0 0 1 1 10h-2M9 16l3 3 4-5" />,
   offline: <path d="m3 3 18 18M8 18H6a4 4 0 0 1-2-7M9 5a7 7 0 0 1 9 3 5 5 0 0 1 3 8M12 12v6M10 16l2 2 2-2" />,

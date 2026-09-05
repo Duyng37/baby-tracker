@@ -1,6 +1,6 @@
 import type { LocalEvent } from './types';
 
-export const labels = { bottle: 'Bình sữa', diaper: 'Thay tã', sleep: 'Ngủ', breast: 'Bú mẹ' };
+export const labels = { bottle: 'Bình sữa', diaper: 'Thay tã', sleep: 'Ngủ', breast: 'Bú mẹ', vaccination: 'Tiêm chủng' };
 export function dayKey(time: number, timezone: string) {
   const parts = new Intl.DateTimeFormat('en', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(time);
   return ['year', 'month', 'day'].map(type => parts.find(p => p.type === type)!.value).join('-');

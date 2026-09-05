@@ -6,7 +6,11 @@ export type EventBody = Common & (
   | { type: 'diaper'; payload: { kind: 'wet' | 'dirty' | 'mixed' } }
   | { type: 'sleep'; payload: Record<string, never> }
   | { type: 'breast'; payload: { segments: Segment[] } }
+  | { type: 'vaccination'; payload: { vaccine: string; dose: string; status: 'planned' | 'completed'; location: string } }
 );
+export type QuickEventType = Exclude<EventBody['type'], 'vaccination'>;
+export type VaccinationBody = Extract<EventBody, { type: 'vaccination' }>;
+export type VaccinationStatus = VaccinationBody['payload']['status'];
 export type Scope = { family_id: string; baby_id: string };
 export type ServerEvent = Omit<Common, 'deleted'> & Scope & {
   id: string; type: EventBody['type']; payload: EventBody['payload'];

@@ -1,10 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
 import { startTimer } from '../domain/events';
-import type { EventBody } from '../domain/types';
+import type { EventBody, QuickEventType } from '../domain/types';
 import { QuickRecord } from './QuickRecord';
 
-const render = (type: EventBody['type'], running?: EventBody, saving = false) => renderToStaticMarkup(
+const render = (type: QuickEventType, running?: EventBody, saving = false) => renderToStaticMarkup(
   <QuickRecord type={type} running={running} timezone="Asia/Ho_Chi_Minh" saving={saving} milk="formula" onMilkChange={() => {}} onSave={() => {}} />);
 
 it.each(['bottle', 'diaper', 'breast', 'sleep'] as const)('provides separate optional day and time fields before %s choices', type => {
