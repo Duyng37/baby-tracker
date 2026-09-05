@@ -107,8 +107,9 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 
 ## Cài PWA và mở lại khi mất mạng
 
-1. Mở app qua HTTPS, đăng nhập và đợi nhật ký đồng bộ khi có mạng. Trên iPhone chọn
-   Chia sẻ → Thêm vào Màn hình chính; trên Android dùng mục cài ứng dụng của trình duyệt.
+1. Mở app qua HTTPS, đăng nhập và đợi nhật ký đồng bộ khi có mạng. Bấm **Thêm vào màn hình chính**
+   ở thẻ **Mở Nôi nhanh hơn** trong Hôm nay hoặc trong **Gia đình** (máy tính: **Cài Nôi trên máy tính**).
+   Trình duyệt hỗ trợ sẽ mở hộp thoại cài; nếu chưa có, app hiện hướng dẫn theo thiết bị.
 2. **Mở chính PWA vừa cài khi còn mạng** và đợi dữ liệu tải về. Cookie có thể được sao chép
    khi cài, nhưng IndexedDB/localStorage và cache của trình duyệt không được coi là đã sao chép.
 3. Vào **Gia đình → Dùng khi mất mạng**, đợi báo giao diện đã được lưu. Có thể yêu cầu
@@ -120,6 +121,16 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 
 - Service worker chỉ bật ở **production build**, không ở `npm run dev`. Cache gồm HTML,
   JS (cả lazy Account), CSS, manifest và icons; không cache Auth/RPC, callback, response riêng tư.
+- Sự kiện `beforeinstallprompt` được giữ trong bộ nhớ ngay khi khởi động, trước khi đăng nhập/tải Account.
+  Mỗi event chỉ dùng một lần, chỉ gọi `prompt()` từ thao tác người dùng. Không tự bật hộp thoại cài.
+- **Để sau** hoặc trả lời hộp thoại cài sẽ ẩn thẻ gợi ý 7 ngày; mục Gia đình vẫn dùng được.
+  Chỉ lưu mốc thời gian `noi:install-remind-after`, không lưu dữ liệu bé/phiên. Storage bị chặn vẫn dùng
+  được lựa chọn trong lần mở hiện tại. Thay đổi thời gian nhắc được nhận giữa các tab qua storage event.
+- Chỉ `appinstalled` hoặc chế độ standalone mới ẩn cả lời mời và mục cài đặt. Không coi chọn Đồng ý
+  hoặc xem hướng dẫn là đã cài; không ghi cờ “đã cài” vĩnh viễn. Tab Safari không biết chắc icon đã có.
+- Hướng dẫn phân biệt iOS/Safari, trình duyệt khác trên iOS, Android, Safari/macOS và máy tính khác;
+  trình duyệt nhúng phổ biến hướng dẫn mở bằng Safari/Chrome. Nhận diện UA chỉ chọn nội dung hướng dẫn,
+  không quyết định khả năng gọi API. iPad ở chế độ desktop nhận diện thêm qua cảm ứng.
 - HTML và assets dùng cùng một phiên bản cache. Bản mới đợi các tab/PWA cũ đóng; không ép reload
   khi người dùng đang nhập. Khi có thông báo cập nhật, đóng tất cả cửa sổ Nôi rồi mở lại.
 - Dấu nhớ tài khoản chỉ gồm user ID/thời điểm xác nhận, tách theo project, tối đa 30 ngày;

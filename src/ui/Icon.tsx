@@ -24,6 +24,8 @@ const shapes = {
   diaper: <path d="M3 6h18l-2 12a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3ZM3 10h18M5 12c4 0 5 4 5 8M19 12c-4 0-5 4-5 8" />,
   vaccination: <><path d="m14 4 6 6M17 3l4 4M18 6l-3 3M13 7l4 4-8 8H5v-4ZM5 19l-3 3M10 10l2 2M7 13l2 2" /></>,
   check: <path d="m5 12 4 4L19 6" />,
+  install: <><rect x="5" y="2" width="14" height="20" rx="3" /><path d="M12 6v9m-3-3 3 3 3-3M10 19h4" /></>,
+  share: <><path d="M8 8H5v13h14V8h-3M12 15V2m-4 4 4-4 4 4" /></>,
   cloud: <path d="M7 18H6a4 4 0 0 1-1-8 7 7 0 0 1 13-2 5 5 0 0 1 1 10h-2M9 16l3 3 4-5" />,
   loading: <><circle cx="12" cy="12" r="9" opacity=".18" /><path d="M12 3a9 9 0 0 1 9 9" /></>,
   offline: <path d="m3 3 18 18M8 18H6a4 4 0 0 1-2-7M9 5a7 7 0 0 1 9 3 5 5 0 0 1 3 8M12 12v6M10 16l2 2 2-2" />,

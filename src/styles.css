@@ -98,6 +98,19 @@ code { overflow-wrap: anywhere; }
 .record-time legend { padding: 0 4px; font-size: .8125rem; font-weight: 600; }
 .record-time .muted { margin-top: 8px; }
 .stack { display: flex; flex-direction: column; gap: 16px; }
+.install-card { display: grid; gap: 14px; border-color: var(--accent-line); }
+.install-heading { display: flex; align-items: flex-start; gap: 12px; }
+.install-heading > .icon { color: var(--soft-ink); margin-top: 2px; }
+.install-heading > div { min-width: 0; }
+.install-heading h2 { font-size: .9375rem; }
+.install-heading p { color: var(--secondary); font-size: .8125rem; margin-top: 5px; }
+.install-card .row > button:first-child { flex: 1 1 180px; background: var(--tint); color: var(--soft-ink); border-color: var(--accent-line); }
+.install-help { font-size: .875rem; overflow-wrap: anywhere; }
+.install-steps { margin: 0; padding-left: 24px; display: grid; gap: 14px; }
+.install-steps li { padding-left: 4px; }
+.install-steps li::marker { color: var(--soft-ink); font-weight: 650; }
+.install-inline { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; }
+.install-inline .icon { width: 20px; height: 20px; color: var(--soft-ink); }
 .primary { background: var(--primary); color: var(--primary-ink); border-color: transparent; }
 .text-button { background: transparent; border-color: transparent; color: var(--soft-ink); padding: 8px 10px; font-size: .8125rem; }
 .danger { color: var(--danger); }

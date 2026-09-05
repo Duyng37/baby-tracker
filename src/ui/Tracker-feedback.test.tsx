@@ -5,6 +5,7 @@ import type { LocalStore } from '../data/store';
 import type { StoreView } from '../data/useStore';
 import type { LocalEvent } from '../domain/types';
 import { DataError } from '../domain/events';
+import type { InstallState } from '../pwa/install';
 
 // Exercise Tracker callbacks/state without a browser. Child components and effects are not mounted.
 const hooks = vi.hoisted(() => ({ slots: [] as unknown[], cursor: 0 }));
@@ -25,12 +26,17 @@ vi.mock('react', async original => ({
   useEffect: vi.fn(), useLayoutEffect: vi.fn(),
 }));
 let current: StoreView;
+let installation: InstallState;
 let online = true;
 const kick = vi.fn();
 const save = vi.fn();
 const edit = vi.fn();
+const installPrompt = vi.fn();
+const postpone = vi.fn();
 vi.mock('../data/useStore', () => ({ useStore: () => current }));
 vi.mock('../sync/useSync', () => ({ useSync: () => ({ online, busy: false, message: '', kick }) }));
+vi.mock('../pwa/useInstall', () => ({ useInstall: () => installation }));
+vi.mock('../pwa/install', () => ({ promptInstall: () => installPrompt(), postponeInstall: () => postpone() }));
 vi.mock('../cloud/supabase', () => ({ signOut: vi.fn(), authenticatedTransport: vi.fn(), authEvents: new EventTarget() }));
 vi.mock('./event-edits', () => ({ saveUnchangedEvent: (...args: unknown[]) => edit(...args) }));
 vi.mock('./theme', () => ({ useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() }) }));
@@ -46,6 +52,7 @@ import { CareForm } from './CareForm';
 import { MedicationSchedule } from './MedicationSchedule';
 import { VaccinationSchedule } from './VaccinationSchedule';
 import { VaccinationForm } from './VaccinationForm';
+import { InstallCard, InstallHelp, InstallSetting } from './InstallApp';
 
 const store = { db: { userId: 'owner' }, save } as unknown as LocalStore;
 const entry: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', server: null, version: 1,
@@ -80,6 +87,8 @@ async function removeRecord() {
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T09:00:00.000Z')); vi.clearAllMocks();
   hooks.slots = []; online = true; localOnly = false;
+  installation = { platform: { kind: 'android', mobile: true, embedded: false }, installed: false, canPrompt: false, busy: false, dismissedUntil: 0 };
+  installPrompt.mockResolvedValue('unavailable');
   save.mockResolvedValue(entry); edit.mockResolvedValue(entry);
   current = { ready: true, error: false, events: [entry], operations: [], lastContact: null,
     workspace: { families: [{ id: 'family', name: 'Gia đình', timezone: 'Asia/Ho_Chi_Minh', sync_cursor: '0' }],
@@ -87,7 +96,48 @@ beforeEach(() => {
       memberships: [{ family_id: 'family', user_id: 'owner', role: 'owner' }] } };
   render();
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+it.each(['unavailable', 'error'])('opens help instead of reporting installation when the native prompt is %s', async result => {
+  installPrompt.mockResolvedValue(result);
+  await perform(component(InstallCard).onInstall);
+  expect(installPrompt).toHaveBeenCalledOnce();
+  expect(component(Sheet).title).toBe('Thêm vào màn hình chính');
+  expect(component(Sheet).dismissOnBackdrop).toBe(true);
+  expect(component(InstallHelp).state.installed).toBe(false);
+  expect(feedback()).not.toContain('đã được cài');
+  await perform(component(Sheet).onClose);
+  expect(elements().some(node => node.type === Sheet)).toBe(false);
+  expect(save).not.toHaveBeenCalled(); expect(edit).not.toHaveBeenCalled();
+});
+it.each([
+  ['accepted', 'Bạn đã đồng ý cài Nôi'], ['dismissed', 'Bạn có thể thêm Nôi sau'], ['installed', 'Nôi đã được cài'],
+])('reports the truthful %s outcome from the install button', async (result, text) => {
+  installPrompt.mockResolvedValue(result);
+  await perform(component(InstallCard).onInstall);
+  expect(feedback()).toContain(text);
+  if (result !== 'installed') expect(feedback()).not.toContain('Nôi đã được cài');
+  expect(elements().some(node => node.type === Sheet)).toBe(false);
+});
+it('keeps the Family install action usable after postponing, even without cloud access', async () => {
+  await perform(component(InstallCard).onLater);
+  expect(postpone).toHaveBeenCalledOnce();
+  localOnly = true; online = false;
+  installation.dismissedUntil = Date.now() + 1000;
+  await perform(button('Gia đình'));
+  await perform(component(InstallSetting).onInstall);
+  expect(component(InstallHelp).state).toBe(installation);
+  expect(kick).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled();
+});
+it('uses a newly available native prompt from an already open help sheet', async () => {
+  await perform(component(InstallCard).onInstall);
+  installation.canPrompt = true; render();
+  installPrompt.mockResolvedValue('accepted');
+  await perform(component(InstallHelp).onInstall);
+  expect(installPrompt).toHaveBeenCalledTimes(2);
+  expect(elements().some(node => node.type === Sheet)).toBe(false);
+  expect(feedback()).toContain('Bạn đã đồng ý cài Nôi');
+});
 
 it('updates journal entries, totals and heading together when selecting a date', async () => {
   const yesterday: LocalEvent = { ...entry, id: 'yesterday', body: { ...entry.body, type: 'bottle',

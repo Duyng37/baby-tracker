@@ -3,8 +3,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { LocalStore } from '../data/store';
 import type { StoreView } from '../data/useStore';
 import type { LocalEvent } from '../domain/types';
+import type { InstallState } from '../pwa/install';
 
 let current: StoreView;
+let installation: InstallState;
 let online = true;
 let busy = false;
 let message = '';
@@ -18,6 +20,7 @@ vi.mock('react', async original => {
 });
 vi.mock('../data/useStore', () => ({ useStore: () => current }));
 vi.mock('../sync/useSync', () => ({ useSync: () => ({ online, busy, message, kick: vi.fn() }) }));
+vi.mock('../pwa/useInstall', () => ({ useInstall: () => installation }));
 vi.mock('../cloud/supabase', () => ({ signOut: vi.fn(), authenticatedTransport: vi.fn() }));
 import { Tracker } from './Tracker';
 import { ThemeProvider } from './theme';
@@ -30,6 +33,7 @@ const bottle: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T09:00:00.000Z'));
   online = true; busy = false; message = ''; familyScreen = false; journalScreen = false; careScreen = false;
+  installation = { platform: { kind: 'android', mobile: true, embedded: false }, installed: false, canPrompt: false, busy: false, dismissedUntil: 0 };
   current = { ready: true, error: false, events: [], operations: [], lastContact: null,
     workspace: { families: [{ id: 'family', name: 'Nhà của Bông', timezone: 'Asia/Ho_Chi_Minh', sync_cursor: '0' }],
       babies: [{ id: 'baby', family_id: 'family', nickname: 'Bông', birth_date: null }],
@@ -51,6 +55,26 @@ it('renders four navigation destinations in order, labelled quick actions and a 
   expect(html).toContain('tabindex="-1"');
   expect(html).toContain('aria-label="Đổi bé, đang chọn Bông"');
   expect(html).toContain('Một khoảng trống nhỏ');
+});
+it('offers installation on Today, including local-only access, and keeps a permanent Family entry after postponing', () => {
+  expect(render()).toContain('aria-label="Mở Nôi nhanh hơn"');
+  expect(render().indexOf('Mở Nôi nhanh hơn')).toBeLessThan(render().indexOf('Nhịp hôm nay'));
+  expect(renderToStaticMarkup(<ThemeProvider><Tracker store={store} localOnly /></ThemeProvider>)).toContain('Thêm vào màn hình chính');
+  installation.dismissedUntil = Date.now() + 1000;
+  expect(render()).not.toContain('aria-label="Mở Nôi nhanh hơn"');
+  familyScreen = true; online = false;
+  const html = renderToStaticMarkup(<ThemeProvider><Tracker store={store} localOnly /></ThemeProvider>);
+  const row = [...html.matchAll(/<button[^>]*class="setting-row"[^>]*>[\s\S]*?<\/button>/g)]
+    .map(match => match[0]).find(button => button.includes('Thêm vào màn hình chính'));
+  expect(row).toBeDefined();
+  expect(row).not.toContain('disabled');
+  expect(html).not.toContain('aria-label="Mở Nôi nhanh hơn"');
+  installation.installed = true;
+  expect(render()).not.toContain('Thêm vào màn hình chính');
+});
+it('does not put the install invitation on Journal or Care', () => {
+  journalScreen = true; expect(render()).not.toContain('Mở Nôi nhanh hơn');
+  journalScreen = false; careScreen = true; expect(render()).not.toContain('Mở Nôi nhanh hơn');
 });
 it('renders the dark-mode toggle consistently with a saved device preference', () => {
   vi.stubGlobal('window', { localStorage: { getItem: () => 'dark' }, matchMedia: () => ({ matches: false }) });
