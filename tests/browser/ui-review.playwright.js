@@ -1,6 +1,9 @@
 // Playwright MCP callback. Run against the dedicated local server described in docs/frontend.md.
 // No credentials, real account, remote requests, or new package dependency. All API responses are fixtures.
-async (page) => {
+async (hostPage) => {
+  const context = await hostPage.context().browser().newContext({ serviceWorkers: 'block' });
+  const page = await context.newPage();
+  try {
   const base = 'http://127.0.0.1:5174';
   const user = 'ui-review-' + Math.random().toString(36).slice(2);
   let moment = Date.parse('2026-09-05T08:32:00.000Z');
@@ -44,6 +47,18 @@ async (page) => {
     const { name, args, userId, projectId } = route.request().postDataJSON();
     if (userId !== user || projectId !== 'ui-review.supabase.co') return route.abort();
     if (name === 'get_workspace') return json({ data: workspace });
+    if (name === 'rename_family' || name === 'rename_baby') {
+      const owner = workspace.memberships.some(member => member.family_id === args.p_family_id && member.user_id === user && member.role === 'owner');
+      if (!owner) return json({ error: 'forbidden' }, 403);
+      const target = name === 'rename_family' ? workspace.families.find(family => family.id === args.p_family_id)
+        : workspace.babies.find(baby => baby.id === args.p_baby_id && baby.family_id === args.p_family_id);
+      if (!target) return json({ error: 'invalid' }, 400);
+      const field = name === 'rename_family' ? 'name' : 'nickname';
+      const value = String(name === 'rename_family' ? args.p_name : args.p_nickname).trim();
+      const expected = name === 'rename_family' ? args.p_expected_name : args.p_expected_nickname;
+      if (target[field] !== expected && target[field] !== value) return json({ data: { status: 'conflict' } });
+      target[field] = value; return json({ data: { status: 'updated' } });
+    }
     if (name === 'pull_changes') return json({ data: { changes: [], next_cursor: args.p_after, has_more: false } });
     if (name === 'apply_event') return json({ data: { status: 'accepted', operation_id: args.p_operation_id, cursor: String(++cursor),
       event: { ...args.p_event, id: args.p_event_id, family_id: args.p_family_id, baby_id: args.p_baby_id,
@@ -91,7 +106,9 @@ async (page) => {
       }
     }
   }
-  const openers = [() => quick('Bình sữa'), () => quick('Thay tã'), () => quick('Bú mẹ'),
+  const openers = [() => quick('Bình sữa'), () => quick('Thay tã'), () => quick('Bú mẹ'), () => quick('Đã thức'),
+    () => page.getByRole('button', { name: 'Đổi tên gia đình', exact: true }),
+    () => page.getByRole('button', { name: 'Đổi tên bé Mít', exact: true }),
     () => page.getByRole('button', { name: 'Đổi bé, đang chọn Bông' }),
     () => page.getByRole('button', { name: 'Thêm bé', exact: true }),
     () => page.getByRole('button', { name: /^Tạo gia đình khác/ }),
@@ -162,6 +179,77 @@ async (page) => {
   check(await page.locator('.journal .event-row').count() === 3, 'journal filter');
   await nav('Hôm nay'); check(await page.getByRole('main').getByRole('button', { name: /^Thay tã,/ }).count() === 1, 'today is not affected by journal filter');
 
+  // Compact actions, backdrop dismissal, header sync, profile editing and the explicit theme switch.
+  check(await page.locator('header .sync-button').count() === 1 && await page.locator('.sync-bar').count() === 0, 'sync is an icon in the header');
+  for (const viewport of [{ width: 320, height: 568 }, { width: 1280, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await page.getByRole('button', { name: 'Thu gọn Ghi nhận nhanh', exact: true }).click();
+    check(await page.locator('.quick-actions .quick-button span').count() === 0, 'compact actions contain only icons');
+    check(await quick('Bình sữa').isVisible(), 'compact action remains accessible');
+    await page.reload(); await page.getByRole('navigation').waitFor();
+    check(await page.getByRole('button', { name: 'Mở rộng Ghi nhận nhanh', exact: true }).getAttribute('aria-expanded') === 'false', 'compact preference survives reload');
+    await page.getByRole('button', { name: 'Mở rộng Ghi nhận nhanh', exact: true }).click();
+    const picker = page.getByRole('button', { name: 'Đổi bé, đang chọn Bông', exact: true });
+    await picker.click(); await page.getByRole('dialog').waitFor();
+    await page.getByRole('heading', { name: 'Chọn bé', exact: true }).click();
+    check(await page.getByRole('dialog').isVisible(), 'inside click keeps picker open');
+    const box = await page.getByRole('dialog').boundingBox();
+    await page.mouse.click(box.x + box.width / 2, Math.max(1, box.y - 12));
+    await page.getByRole('dialog').waitFor({ state: 'detached' });
+    check(await picker.evaluate(el => el === document.activeElement), 'backdrop closes picker and restores focus');
+  }
+  await page.setViewportSize({ width: 390, height: 844 }); await nav('Gia đình'); await theme('light');
+  const nightSwitch = page.getByRole('switch', { name: 'Chế độ ban đêm', exact: true });
+  check(await nightSwitch.getAttribute('aria-checked') === 'false', 'night switch initially off');
+  await nightSwitch.click();
+  check(await nightSwitch.getAttribute('aria-checked') === 'true', 'night switch turns on');
+  check(await page.getByRole('button', { name: 'Bật chế độ sáng', exact: true }).isVisible(), 'header tracks switch state');
+  await nightSwitch.focus(); await page.keyboard.press('Space');
+  check(await nightSwitch.getAttribute('aria-checked') === 'false', 'keyboard toggles switch off');
+  await page.getByRole('button', { name: 'Đổi tên gia đình', exact: true }).click();
+  await page.getByLabel('Tên gia đình', { exact: true }).fill('Nhà kiểm thử');
+  await page.getByRole('button', { name: 'Lưu tên mới', exact: true }).click();
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
+  check(await page.locator('.baby-info small').textContent() === 'Nhà kiểm thử', 'family rename refreshes header');
+  await page.getByRole('button', { name: 'Đổi tên bé Mít', exact: true }).click();
+  await page.getByLabel('Tên gọi của bé', { exact: true }).fill('Mít mới');
+  await page.getByRole('button', { name: 'Lưu tên mới', exact: true }).click();
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
+  check(await page.getByRole('button', { name: 'Đổi tên bé Mít mới', exact: true }).isVisible(), 'sibling rename refreshes profile');
+
+  // Record a complete overnight sleep once, then a running sleep with wake fields left blank.
+  await page.getByRole('button', { name: 'Đổi bé, đang chọn Bông', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Mít mới', exact: true }).click();
+  await nav('Hôm nay'); await quick('Ngủ').click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Ngày', { exact: true }).fill('2026-09-04');
+  await dialog.getByLabel('Giờ', { exact: true }).fill('22:00');
+  await dialog.getByLabel('Giờ thức giấc', { exact: true }).fill('06:00');
+  await page.getByRole('button', { name: 'Lưu giấc ngủ', exact: true }).click();
+  check(await dialog.getByRole('alert').isVisible(), 'backwards wake time requires an explicit next day');
+  await dialog.getByLabel('Ngày thức giấc', { exact: true }).fill('2026-09-05');
+  await tick(); await page.getByRole('button', { name: 'Lưu giấc ngủ', exact: true }).click();
+  await dialog.waitFor({ state: 'detached' });
+  const sleepBodies = () => page.evaluate(async user => {
+    const { TrackerDB } = await import('/src/data/database.ts');
+    const db = new TrackerDB('ui-review.supabase.co', user);
+    try { return (await db.events.toArray()).filter(event => event.baby_id === 'ui-sibling' && event.body.type === 'sleep').map(event => event.body); }
+    finally { db.close(); }
+  }, user);
+  const completed = await sleepBodies();
+  check(completed.length === 1 && completed[0].started_at === '2026-09-04T15:00:00.000Z' && completed[0].ended_at === '2026-09-04T23:00:00.000Z', 'completed sleep persists both timestamps in one entry');
+  check(await quick('Ngủ').isVisible(), 'completed backfill does not start a timer');
+  await quick('Ngủ').click(); await tick();
+  await page.getByRole('button', { name: 'Lưu giấc ngủ', exact: true }).click();
+  await dialog.waitFor({ state: 'detached' });
+  check((await sleepBodies()).filter(body => body.ended_at === null).length === 1, 'blank wake fields create an active sleep');
+  await quick('Đã thức').click(); await tick();
+  await dialog.getByRole('button', { name: 'Đã thức', exact: true }).click();
+  await dialog.waitFor({ state: 'detached' });
+  check((await sleepBodies()).every(body => body.ended_at !== null), 'active sleep can still be stopped later');
+  await page.getByRole('button', { name: 'Đổi bé, đang chọn Mít mới', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Bông', exact: true }).click();
+
   // Long names, text enlargement and safe wrapping.
   workspace.babies[0].nickname = 'B'.repeat(80); await saveWorkspace();
   await page.waitForFunction(() => document.querySelector('.baby-info strong').textContent.length === 80);
@@ -186,4 +274,7 @@ async (page) => {
   await page.setViewportSize({ width: 390, height: 844 }); await nav('Hôm nay');
   check(runtimeErrors === 0, 'no browser runtime errors'); check(externalRequests === 0, 'no remote requests');
   return { checks, screenCases, sheetCases, noticeCases, runtimeErrors, externalRequests, backend: 'mocked; real React and IndexedDB' };
+  } catch (error) {
+    return { failed: true, progress: page.uiReviewProgress, message: String(error.message).slice(0, 1800) };
+  } finally { await context.close(); }
 }

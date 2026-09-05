@@ -2,8 +2,9 @@
 
 Kiểm tra thông tin gói dịch vụ ngày **2026-09-05**. Giá/hạn mức có thể thay đổi.
 Đã có frontend React và migration; SQL tests chạy thành công trên PostgreSQL 17 local.
-Người dùng đã deploy frontend cũ. Bản cookie/BFF mới cần thêm migration và cấu hình
-server theo [hướng dẫn Auth/PWA](auth-pwa.md); agent chưa áp dụng lên cloud.
+Project production đã áp dụng đủ năm migration, gồm `202609050005_profile_names.sql`
+ngày 2026-09-05; kiểm tra dry-run xác nhận không còn migration chờ. Đăng nhập BFF đã được
+người dùng xác nhận; cấu hình project mới theo [hướng dẫn Auth/PWA](auth-pwa.md).
 
 ## 1. Có thể dùng miễn phí không?
 
@@ -60,10 +61,15 @@ Trong SQL Editor, chạy theo thứ tự:
 2. `supabase/migrations/202609050002_families.sql`
 3. `supabase/migrations/202609050003_sync.sql`
 4. `supabase/migrations/202609050004_server_sessions.sql`
+5. `supabase/migrations/202609050005_profile_names.sql`
 
 Khuyến nghị dùng Supabase CLI để lưu lịch sử: xem `migration list`, `db push --dry-run`,
 sau khi xác nhận đúng project mới `db push`. Không push lại schema từng chạy thủ công.
-`supabase/tests/backend.sql` và `supabase/tests/server-sessions.sql` chỉ dành cho database test.
+`supabase/tests/backend.sql`, `supabase/tests/profile-names.sql` và
+`supabase/tests/server-sessions.sql` chỉ dành cho database test.
+
+Project đã áp dụng bốn migration đầu chỉ cần migration `202609050005_profile_names.sql`
+để bật đổi tên hồ sơ; triển khai BFF/frontend tương ứng. Không chạy lại schema cũ.
 
 Không chạy `scripts/test-auth-bootstrap.sql` trên Supabase; đó chỉ là auth fixture
 cho container PostgreSQL độc lập. Đọc kết quả test cuối; không gửi log chứa key,

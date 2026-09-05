@@ -67,3 +67,16 @@ it('keeps PWA launch colors and initial browser chrome aligned with the light ca
   expect(manifest.theme_color).toBe(canvas);
   expect(html).toContain(`<meta name="theme-color" content="${canvas}"`);
 });
+it('keeps icon-only quick actions and their expand control in one row', () => {
+  expect(css).toContain('.quick-recording[data-collapsed="true"] .quick-heading { display: none; }');
+  expect(css).toMatch(/\.quick-recording\[data-collapsed="true"\] \.quick-actions \{[^}]*grid-row: 1;[^}]*repeat\(4, minmax\(0, 1fr\)\)/);
+  expect(css).toContain('.quick-toggle { grid-column: 2; grid-row: 1; }');
+  expect(css).not.toContain('.quick-toggle { display: none');
+  expect(css).not.toContain('.footer--compact');
+});
+it('shows a fixed-size theme switch with distinct on/off positions and forced-color support', () => {
+  expect(css).toMatch(/\.theme-setting > \.switch-track \{[^}]*flex: 0 0 44px;[^}]*height: 26px/);
+  expect(css).toContain('.theme-setting[aria-checked="true"] .switch-thumb { transform: translateX(18px)');
+  expect(css).toContain('.switch-thumb { background: ButtonText; forced-color-adjust: none; }');
+  expect(css).toContain('.theme-setting[aria-checked="true"] .switch-thumb { background: HighlightText; }');
+});

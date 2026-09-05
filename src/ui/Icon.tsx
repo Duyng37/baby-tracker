@@ -16,6 +16,7 @@ const shapes = {
   chevron: <path d="m9 5 7 7-7 7" />,
   down: <path d="m6 9 6 6 6-6" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  edit: <><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15Z" /><path d="M13 20h7" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" /></>,
   swap: <path d="M4 7h15l-4-4M20 17H5l4 4M19 7l-4 4M5 17l4-4" />,

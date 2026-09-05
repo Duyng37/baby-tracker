@@ -48,6 +48,20 @@ it('rejects an account change before forwarding a pending mutation', async () =>
     body: JSON.stringify({ name: 'apply_event', args: {}, userId: '22222222-2222-4222-8222-222222222222', projectId: new URL(config.url).hostname }) });
   expect(response.status).toBe(409); expect(db.rpc).not.toHaveBeenCalled();
 });
+it.each(['rename_family', 'rename_baby'])('allows %s through the same account-bound business RPC path', async name => {
+  const { base, headers, db } = await setup();
+  const args = name === 'rename_family' ? { p_family_id: 'family', p_name: 'New family', p_expected_name: 'Old family' }
+    : { p_family_id: 'family', p_baby_id: 'baby', p_nickname: 'New baby', p_expected_nickname: 'Old baby' };
+  const payload = { name, args, userId: user, projectId: new URL(config.url).hostname };
+  const response = await fetch(`${base}/api/rpc`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  expect(response.status).toBe(200);
+  expect(db.rpc).toHaveBeenCalledOnce();
+  expect(db.rpc.mock.calls[0].slice(1)).toEqual([name, args]);
+  const rejected = await fetch(`${base}/api/rpc`, { method: 'POST', headers,
+    body: JSON.stringify({ ...payload, userId: '22222222-2222-4222-8222-222222222222' }) });
+  expect(rejected.status).toBe(409);
+  expect(db.rpc).toHaveBeenCalledOnce();
+});
 it('callback consumes code then redirects to a clean path with HttpOnly session cookie', async () => {
   const { base, sessions } = await setup(); const start = sessions.start();
   const response = await fetch(`${base}/api/auth?action=callback&code=TEST_ONLY_NOT_A_CODE`, { redirect: 'manual', headers: { Cookie: start.cookie.split(';')[0] } });

@@ -53,6 +53,7 @@ try {
     executeSql(readFileSync(new URL(file, directory), 'utf8'), file);
   }
   executeSql(readFileSync(new URL('../supabase/tests/backend.sql', import.meta.url), 'utf8'), 'backend integration assertions');
+  executeSql(readFileSync(new URL('../supabase/tests/profile-names.sql', import.meta.url), 'utf8'), 'profile rename permissions, conflicts and journal preservation');
   executeSql(readFileSync(new URL('../supabase/tests/server-sessions.sql', import.meta.url), 'utf8'), 'server session ACL and lease assertions');
   console.log('PostgreSQL semantics tested. Supabase JWT/OAuth/PostgREST and concurrent sessions still require integration tests.');
 } catch (error) {

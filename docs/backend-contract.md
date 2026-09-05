@@ -1,6 +1,6 @@
 # Hợp đồng backend — bản đầu
 
-**Trạng thái:** ba migration và SQL integration assertions đã pass trên PostgreSQL 17
+**Trạng thái:** năm migration và SQL integration assertions đã pass trên PostgreSQL 17
 local với auth fixture. Chưa kiểm chứng Supabase Auth/JWT/PostgREST thực hoặc race nhiều connection.
 Không phải chứng nhận production. Đọc [setup](setup.md) trước khi áp dụng schema.
 
@@ -11,11 +11,11 @@ Không phải chứng nhận production. Đọc [setup](setup.md) trước khi �
 - RPC ghi là `SECURITY DEFINER`, cố định `search_path`, kiểm tra `auth.uid()` và membership
   trước khi thao tác. Vì definer có thể vượt RLS, các kiểm tra RPC là một lớp bảo mật bắt buộc,
   không được bỏ chỉ vì bảng đã bật RLS. Frontend không sử dụng service-role; BFF vẫn gọi
-  10 RPC nghiệp vụ bằng JWT người dùng, có kiểm tra expected user/project trên mỗi request.
+  12 RPC nghiệp vụ bằng JWT người dùng, có kiểm tra expected user/project trên mỗi request.
 - `private`: outbox ACK server, change log, lời mời, rate counter; không expose qua Data API.
   Chỉ helper membership được cấp execute cho authenticated để policy SELECT dùng được.
-- Chủ gia đình tạo hồ sơ/mời/thu hồi; caregiver được ghi nhật ký. Không có RPC tự nâng vai trò.
-- Chưa có API đổi tên hồ sơ, chuyển chủ, xóa gia đình/tài khoản hoặc garbage collection.
+- Chủ gia đình tạo/đổi tên hồ sơ/mời/thu hồi; caregiver được ghi nhật ký. Không có RPC tự nâng vai trò.
+- Chưa có API chuyển chủ, xóa gia đình/tài khoản hoặc garbage collection.
 
 ## Các RPC
 
@@ -26,6 +26,8 @@ Tham số và chữ ký chính xác nằm trong migration; tên dưới đây c�
 | --- | --- | --- |
 | `create_family` | UUID gia đình + bé, tên, nickname, timezone, ngày sinh tùy chọn | Tạo family/owner/baby trong một transaction; retry giữ nguyên IDs và nội dung |
 | `add_baby` | family ID, baby UUID, nickname, ngày sinh | Owner-only; retry cùng ID/nội dung không tạo trùng |
+| `rename_family` | family ID, tên mới, tên lúc mở form (`p_expected_name`) | Owner-only; tên 1–80 ký tự sau trim; trả `updated` hoặc `conflict` nếu tên đã thay đổi |
+| `rename_baby` | family ID, baby ID, nickname mới, `p_expected_nickname` | Owner-only; kiểm tra bé thuộc gia đình; cùng quy tắc tên và xung đột |
 | `get_workspace` | Không | Snapshot metadata của các gia đình được phép, bé và membership; chưa gồm nhật ký |
 | `create_invitation` | family ID | Owner-only, mã bearer dùng một lần/48 giờ, chỉ caregiver, tối đa 20 lần tạo mỗi giờ/gia đình |
 | `list_invitations` | family ID | Owner-only; trả ID/trạng thái/hạn, không trả token/hash |
@@ -34,6 +36,12 @@ Tham số và chữ ký chính xác nằm trong migration; tên dưới đây c�
 | `remove_family_member` | family ID, user ID | Owner-only; không xóa chủ cuối cùng; hủy lời mời chưa dùng của người bị xóa |
 | `apply_event` | operation/device/family/baby/event UUID, base revision, event body | Kiểm tra scope/revision, ghi atomically event + change log + kết quả idempotency |
 | `pull_changes` | family ID, after cursor, limit 1–500 | Phân trang thay đổi gồm tombstone; mặc định 200; cursor dưới dạng chuỗi |
+
+Đổi tên cần migration `202609050005_profile_names.sql` và BFF có allowlist tương ứng.
+Client cần mạng, giữ nguyên ID/nhật ký và tải lại `get_workspace` sau khi gửi; không đưa
+đổi tên vào outbox sự kiện. RPC khóa gia đình trước khi kiểm tra quyền/tên đang lưu.
+Retry cùng tên đích trả `updated`; tên hiện tại khác cả tên cũ và tên đích trả `conflict`,
+không ghi đè. Đây là kiểm tra theo giá trị tên, không phải hệ thống revision metadata.
 
 Mã mời là credential: chỉ hiển thị cho người tạo và người nhận dự định. Không đưa
 vào URL query, logs, analytics hay chat với agent. Database chỉ lưu SHA-256 của mã

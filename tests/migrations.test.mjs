@@ -13,11 +13,12 @@ const sync = migrations[2].toLowerCase();
 const rpcNames = [
   'create_family', 'add_baby', 'get_workspace', 'create_invitation', 'list_invitations',
   'revoke_invitation', 'accept_invitation', 'remove_family_member', 'apply_event', 'pull_changes',
+  'rename_family', 'rename_baby',
 ];
 const vaultNames = ['bff_session_create', 'bff_session_read', 'bff_session_claim', 'bff_session_save', 'bff_session_delete'];
 
 test('static: ordered migrations are transaction-wrapped, with no destructive DDL', () => {
-  assert.equal(files.length, 4);
+  assert.equal(files.length, 5);
   for (const migration of migrations) {
     const source = migration.replace(/--[^\n]*/g, '').trim();
     assert.match(source, /^begin;/i);
@@ -40,7 +41,7 @@ test('static: every application table enables RLS, no direct client writes', () 
 
 test('static: every function fixes search_path; each public RPC has an explicit ACL', () => {
   const functions = [...sql.matchAll(/create function ([a-z_.]+)\(([\s\S]*?)\$\$;/g)];
-  assert.equal(functions.length, 19);
+  assert.equal(functions.length, 21);
   assert.deepEqual(functions.filter(([_, name]) => name.startsWith('public.')).map(([_, name]) => name.slice(7)).sort(), [...rpcNames, ...vaultNames].sort());
   for (const [, name, definition] of functions) {
     assert.match(definition, /set search_path = ''/);
@@ -106,4 +107,16 @@ test('static: runtime test script uses disposable fixtures and always rolls back
   assert.match(script, /rollback;/i);
   assert.doesNotMatch(script, /\bcommit;/i);
   assert.doesNotMatch(script, /raise (?:notice|log)[^;]*(token|payload)/i);
+});
+
+test('static: profile renames require owner locks, compare old names and never move babies', () => {
+  for (const name of ['rename_family', 'rename_baby']) {
+    const body = sql.match(new RegExp(`create function public\\.${name}\\([\\s\\S]*?\\$\\$;`))[0];
+    assert.match(body, /perform private\.lock_family\(p_family_id, true\)/);
+    assert.match(body, /is distinct from p_expected_/);
+    assert.match(body, /'status', 'conflict'/);
+    assert.doesNotMatch(body, /update public\.tracking_events|set family_id|set id/);
+  }
+  const baby = sql.match(/create function public\.rename_baby\([\s\S]*?\$\$;/)[0];
+  assert.match(baby, /where id = p_baby_id and family_id = p_family_id/);
 });

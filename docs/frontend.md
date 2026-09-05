@@ -9,7 +9,12 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 - Auth Google qua Supabase PKCE phía server, phiên cookie HttpOnly; JS không nhận token mới.
   Thiết kế, migration và env server-only: [Auth/PWA](auth-pwa.md).
 - Tạo gia đình/bé cần mạng; IDs và request nháp lưu trước network để retry an toàn.
+- Chủ gia đình có thể đổi tên gia đình và từng bé trong màn Gia đình. Cần mạng/phiên hợp lệ;
+  tải lại workspace sau khi lưu, không đổi ID/nhật ký. Tên đã đổi từ nơi khác sẽ báo xung đột.
 - Chọn bé/gia đình, ghi bình/tã/bú mẹ/ngủ; kết thúc/đổi bên timer, ghi chú, xóa/hoàn tác.
+- Ghi ngủ có ngày/giờ bắt đầu và ngày/giờ thức giấc riêng: để trống thời điểm thức thì
+  timer tiếp tục chạy, nhập giờ thức thì lưu giấc ngủ đã kết thúc. Nếu chỉ nhập giờ thức,
+  dùng ngày bắt đầu ngủ; giấc qua đêm cần chọn ngày thức. Không tự đoán giờ khi chỉ nhập ngày thức.
 - Tổng hợp 24 giờ gần nhất theo bé; lọc ngày nhật ký theo timezone gia đình.
 - Tạo/nhận mã mời caregiver; token chỉ ở bộ nhớ UI, không vào IndexedDB hoặc URL.
 - PWA cache giao diện để mở lại khi mất mạng; xuất/khôi phục sao lưu JSON trong màn Gia đình.
@@ -23,6 +28,8 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
   date/select, dialog, thông báo và màu thanh trình duyệt. Mặc định theo hệ điều hành;
   lựa chọn thủ công lưu riêng trong localStorage (`noi:theme`, không chứa dữ liệu bé/phiên).
   Không có quyền localStorage vẫn đổi theme được; các tab nhận cập nhật qua storage event.
+- Mục **Chế độ ban đêm** trong Gia đình là công tắc bật/tắt có `role="switch"` và
+  `aria-checked`, dùng cùng theme với nút header; hỗ trợ bàn phím, reduced-motion và forced-colors.
 - Focus chuột không tạo viền dày; focus bàn phím có outline 2px, input có border/halo
   dịu và hỗ trợ forced-colors. Input 16px tránh Safari tự zoom khi nhập.
 - Nội dung có vùng cuộn riêng; thanh ghi nhanh/navigation nằm trong flex layout,
@@ -66,7 +73,7 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 3. Vào **Gia đình → Dùng khi mất mạng**, đợi báo giao diện đã được lưu. Có thể yêu cầu
    “Ưu tiên giữ dữ liệu trên máy”; trình duyệt có thể từ chối, quyền này không thay thế backup.
 4. Khi mất mạng, mở lại app và chọn **Mở nhật ký trên thiết bị** nếu chưa kiểm tra được phiên.
-   Ghi nhận được lưu local; tạo gia đình/bé, mời người và khôi phục từ tệp cần xác thực + mạng.
+   Ghi nhận được lưu local; tạo/đổi tên gia đình/bé, mời người và khôi phục từ tệp cần xác thực + mạng.
 5. Kết nối lại → app kiểm tra phiên; nếu cần, đăng nhập đúng tài khoản cũ để tiếp tục đồng bộ.
    Chỉ báo đã đồng bộ sau khi cloud xác nhận, không coi tài khoản local là phiên hợp lệ.
 
@@ -129,7 +136,8 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
   cả hai theme; Tab/Shift+Tab/Escape và trả focus; 320/390/640px, màn hình ngang,
   zoom 200%, bàn phím ảo, tên/ghi chú dài, lỗi/disabled/autofill, theme sau reload.
 - `npm test`: chạy cả legacy + client; `npm run test:legacy` chạy riêng 56 test wireframe/static.
-- `npm run test:db`: PostgreSQL runtime suite trong container tạm, không kết nối remote DB.
+- `npm run test:db`: PostgreSQL runtime suite trong container tạm, không kết nối remote DB;
+  gồm quyền đổi tên owner/caregiver/revoked/anon, chống sửa chéo gia đình, retry/xung đột và giữ nguyên nhật ký.
 - `npm run build`: typecheck + bundle; không thay thế các kiểm thử runtime ở trên.
 - Sau build, `node scripts/check-offline-build.mjs` phục vụ artifact qua HTTP loopback rồi chạy
   worker trong Node VM: kiểm tra toàn bộ file được cache, offline HTML/lazy JS/CSS/icons,
@@ -143,10 +151,15 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 - Dùng terminal PowerShell riêng: đặt `$env:VITE_SUPABASE_URL='https://ui-review.supabase.co'`,
   rồi chạy `npm run dev -- --port 5174 --strictPort`. Không cần key/cookie/tài khoản thật.
 - Chạy callback bằng tham số `filename` trong thư mục MCP được phép đọc; nếu workspace
-  nằm ngoài allowed roots, sao chép riêng file test vào thư mục artifact của MCP.
+  nằm ngoài allowed roots, truyền trực tiếp nội dung callback qua tham số `code`.
+  Callback tạo browser context riêng và đóng sau khi chạy, không dùng phiên đăng nhập sẵn có.
 - Kịch bản chặn request ngoài localhost, giả lập toàn bộ Auth/RPC và tạo DB theo user
   ngẫu nhiên có tiền tố `ui-review-`; React, dialog, focus và IndexedDB chạy thật.
-- Bao phủ 40 tổ hợp màn hình/theme/viewport, 54 tổ hợp sheet, thông báo Hoàn tác,
+- Lần chạy 2026-09-05 đạt 303 kiểm tra: 40 tổ hợp màn hình/theme/viewport, 72 tổ hợp sheet,
+  8 tổ hợp thông báo Hoàn tác; không có lỗi runtime hoặc request ra backend thật.
+  Bao phủ backdrop/trả focus, thu gọn và nhớ lựa chọn, icon đồng bộ, đổi tên gia đình/bé,
+  công tắc theme bằng chuột/bàn phím; ghi bù ngủ qua đêm và bỏ trống giờ thức để chạy timer.
+  Các kiểm tra hồi quy khác gồm
   Tab/Shift+Tab/Escape, lưu lượng lẻ → sửa ghi chú → xóa → hoàn tác, lỗi form,
   tên 80 ký tự, font 200%, lưu theme sau reload. Kích thước 320–1280px và màn hình ngang.
 - Cố ý trả HTTP 503 cho form tạo bé để kiểm tra lỗi; đó không phải backend hỏng.
