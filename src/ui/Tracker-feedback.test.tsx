@@ -39,7 +39,13 @@ import { QuickActions } from './QuickActions';
 import { QuickRecord } from './QuickRecord';
 import { Journal } from './Journal';
 import { JournalDateInput } from './JournalDateInput';
+import { Metrics } from './Metrics';
 import { Sheet } from './Sheet';
+import { CareActions } from './CareActions';
+import { CareForm } from './CareForm';
+import { MedicationSchedule } from './MedicationSchedule';
+import { VaccinationSchedule } from './VaccinationSchedule';
+import { VaccinationForm } from './VaccinationForm';
 
 const store = { db: { userId: 'owner' }, save } as unknown as LocalStore;
 const entry: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', server: null, version: 1,
@@ -83,15 +89,91 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-it('filters journal entries when the compact date control selects another day', async () => {
-  const yesterday = { ...entry, id: 'yesterday', body: { ...entry.body, started_at: '2026-09-04T08:00:00.000Z' } };
-  current.events = [entry, yesterday]; render();
+it('updates journal entries, totals and heading together when selecting a date', async () => {
+  const yesterday: LocalEvent = { ...entry, id: 'yesterday', body: { ...entry.body, type: 'bottle',
+    started_at: '2026-09-04T08:00:00.000Z', payload: { amount_ml: 120, milk: 'formula' } } };
+  const foreign = { ...yesterday, id: 'foreign', baby_id: 'sibling' };
+  const heading = () => elements().filter(node => node.type === 'h2').map(node => node.props.children);
+  current.events = [entry, yesterday, foreign]; render();
   await perform(button('Nhật ký'));
   expect(component(JournalDateInput).value).toBe('2026-09-05');
   expect(component(Journal).events.map(event => event.id)).toEqual(['event']);
+  expect(component(Metrics).summary.bottle).toBe(90);
+  expect(heading()).toContain('Ngày hôm nay');
   await perform(() => component(JournalDateInput).onChange('2026-09-04'));
   expect(component(JournalDateInput).value).toBe('2026-09-04');
   expect(component(Journal).events.map(event => event.id)).toEqual(['yesterday']);
+  expect(component(Metrics).summary.bottle).toBe(120);
+  expect(heading()).toContain('Tổng hợp ngày 04/09/2026');
+  await perform(() => component(JournalDateInput).onChange('2026-09-03'));
+  expect(component(Journal).events).toEqual([]);
+  expect(component(Metrics).summary).toEqual({ bottle: 0, diapers: 0, sleep: 0, breast: 0 });
+  expect(heading()).toContain('Tổng hợp ngày 03/09/2026');
+  await perform(() => component(JournalDateInput).onChange('2026-09-05'));
+  expect(component(Metrics).summary.bottle).toBe(90);
+  expect(heading()).toContain('Ngày hôm nay');
+});
+
+it('keeps Today totals and entries on today after viewing a past journal date', async () => {
+  const yesterday: LocalEvent = { ...entry, id: 'yesterday', body: { ...entry.body, type: 'bottle',
+    started_at: '2026-09-04T16:30:00Z', payload: { amount_ml: 120, milk: 'formula' } } };
+  const heading = () => elements().filter(node => node.type === 'h2').map(node => node.props.children);
+  current.events = [entry, yesterday]; render();
+  await perform(button('Nhật ký'));
+  await perform(() => component(JournalDateInput).onChange('2026-09-04'));
+  expect(component(Metrics).summary.bottle).toBe(120);
+  await perform(button('Hôm nay'));
+  expect(component(Metrics).summary.bottle).toBe(90);
+  expect(component(Journal).events.map(event => event.id)).toEqual(['event']);
+  expect(heading()).toContain('Ngày hôm nay');
+  expect(heading()).not.toContain('Tổng hợp ngày 04/09/2026');
+  await perform(button('Nhật ký'));
+  expect(component(JournalDateInput).value).toBe('2026-09-04');
+  expect(component(Metrics).summary.bottle).toBe(120);
+  expect(component(Journal).events.map(event => event.id)).toEqual(['yesterday']);
+});
+
+it.each(['breast', 'bottle', 'diaper', 'sleep'] as const)('routes Care %s to the existing quick-record flow', async type => {
+  await perform(button('Chăm con'));
+  await perform(() => component(CareActions).onAction(type));
+  expect(component(QuickRecord).type).toBe(type);
+});
+it.each(['bath', 'tummy_time', 'outdoor', 'indoor', 'brushing_teeth'] as const)('opens and saves Care activity %s for the selected baby', async kind => {
+  localOnly = true; online = false; render();
+  await perform(button('Chăm con'));
+  await perform(() => component(CareActions).onAction('activity', kind));
+  expect(component(CareForm).kind).toBe(kind);
+  const body = { ...entry.body, type: 'activity' as const, payload: { kind, duration_minutes: 10 } };
+  await perform(() => component(CareForm).onSave(body));
+  expect(save).toHaveBeenCalledWith({ family_id: 'family', baby_id: 'baby' }, expect.any(String), body);
+  expect(feedback()).toContain('Đã lưu ghi nhận.');
+});
+it.each(['meal', 'growth', 'medication'] as const)('opens the %s form from Care', async type => {
+  await perform(button('Chăm con'));
+  await perform(() => component(CareActions).onAction(type));
+  expect(component(CareForm).type).toBe(type);
+});
+it('edits, deletes and undoes medication on the same event', async () => {
+  const body = { ...entry.body, type: 'medication' as const, payload: { name: 'Thuốc thử', dose: '', status: 'planned' as const } };
+  const medication = { ...entry, body }; current.events = [medication]; render();
+  await perform(button('Chăm con'));
+  await perform(() => component(MedicationSchedule).onEdit(medication));
+  expect(component(CareForm).body).toEqual(body);
+  await perform(() => component(CareForm).onSave({ ...body, payload: { ...body.payload, status: 'completed' } }));
+  expect(edit).toHaveBeenCalledWith(store, medication, expect.objectContaining({ payload: { name: 'Thuốc thử', dose: '', status: 'completed' } }));
+  expect(save).not.toHaveBeenCalled();
+  await perform(() => component(MedicationSchedule).onEdit(medication));
+  await perform(() => component(CareForm).onDelete!());
+  expect(feedback()).toContain('Hoàn tác');
+  await perform(button('Hoàn tác'));
+  expect(edit).toHaveBeenLastCalledWith(store, { ...medication, body: { ...body, deleted: true } }, body);
+});
+it('opens vaccination recording from Care after moving it out of Family', async () => {
+  await perform(button('Gia đình'));
+  expect(elements().some(node => node.type === VaccinationSchedule)).toBe(false);
+  await perform(button('Chăm con'));
+  await perform(() => component(VaccinationSchedule).onAdd('planned'));
+  expect(component(VaccinationForm).initialStatus).toBe('planned');
 });
 
 it.each(['online', 'offline', 'local-only'])('confirms a successful save in %s mode and triggers background sync', async mode => {

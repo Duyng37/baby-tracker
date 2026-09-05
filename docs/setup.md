@@ -62,11 +62,14 @@ Trong SQL Editor, chạy theo thứ tự:
 3. `supabase/migrations/202609050003_sync.sql`
 4. `supabase/migrations/202609050004_server_sessions.sql`
 5. `supabase/migrations/202609050005_profile_names.sql`
+6. `supabase/migrations/202609050006_vaccinations.sql`
+7. `supabase/migrations/202609050007_care_events.sql`
 
 Khuyến nghị dùng Supabase CLI để lưu lịch sử: xem `migration list`, `db push --dry-run`,
 sau khi xác nhận đúng project mới `db push`. Không push lại schema từng chạy thủ công.
-`supabase/tests/backend.sql`, `supabase/tests/profile-names.sql` và
-`supabase/tests/server-sessions.sql` chỉ dành cho database test.
+Các tệp trong `supabase/tests/` chỉ dành cho database test, bao gồm `care-events.sql`.
+Để dùng tab Chăm con, áp dụng các migration còn thiếu đến 007 trước khi triển khai frontend;
+build Vercel không cập nhật schema. Đóng các tab/PWA cũ rồi mở lại để đọc các loại event mới.
 
 Project đã áp dụng bốn migration đầu chỉ cần migration `202609050005_profile_names.sql`
 để bật đổi tên hồ sơ; triển khai BFF/frontend tương ứng. Không chạy lại schema cũ.

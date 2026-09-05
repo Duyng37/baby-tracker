@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 
 export function parseDateText(text: string): string | null {
@@ -26,9 +26,19 @@ export function DateInput({ id, name, value, max, required, disabled, onChange, 
   id?: string; name?: string; value: string; max?: string; required?: boolean; disabled?: boolean;
   onChange: (value: string) => void; ariaLabel: string; className?: string;
 }) {
+  const root = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<{ source: string; text: string } | null>(null);
   const [month, setMonth] = useState(() => monthStart(value || max || ''));
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
+    };
+    // Capture also handles clicks on controls that stop propagation (and touch/pen input).
+    document.addEventListener('pointerdown', outside, true);
+    return () => document.removeEventListener('pointerdown', outside, true);
+  }, [open]);
   const text = draft?.source === value ? draft.text : formatDate(value);
   const parsed = parseDateText(text);
   const invalid = !!draft && (!parsed || !!max && parsed > max);
@@ -41,7 +51,7 @@ export function DateInput({ id, name, value, max, required, disabled, onChange, 
     const iso = `${month}-${String(day).padStart(2, '0')}`;
     setDraft(null); onChange(iso); setOpen(false);
   }
-  return <div className="date-input">
+  return <div className="date-input" ref={root}>
     <div className="date-input-control"><input id={id} name={name} className={`date-input-text ${className}`.trim()} type="text" placeholder="dd/mm/yyyy" maxLength={10}
       inputMode="numeric" autoComplete="off" spellCheck={false} value={text} required={required} disabled={disabled} aria-label={ariaLabel} aria-invalid={invalid}
       onChange={event => { const nextText = event.currentTarget.value; const nextDate = parseDateText(nextText); setDraft({ source: value, text: nextText }); if (nextDate && (!max || nextDate <= max)) onChange(nextDate); }}

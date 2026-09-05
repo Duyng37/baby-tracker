@@ -1,10 +1,26 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { recordingTime } from './recording-time';
+import { recordingDateTime, recordingTime } from './recording-time';
 
 const timezone = 'Asia/Ho_Chi_Minh';
 const now = Date.parse('2026-09-05T18:23:45.678Z'); // Sep 6, 01:23 in the family timezone.
 afterEach(() => vi.useRealTimers());
 const iso = (date: string, time: string, zone = timezone, at = now) => new Date(recordingTime(date, time, zone, at)).toISOString();
+
+it.each([
+  ['Asia/Ho_Chi_Minh', '2026-09-06', '01:23'],
+  ['America/Los_Angeles', '2026-09-05', '11:23'],
+  ['Asia/Kathmandu', '2026-09-06', '00:08'],
+])('prefills the current date and minute in %s', (zone, date, time) => {
+  vi.useFakeTimers(); vi.setSystemTime(now);
+  expect(recordingDateTime(zone)).toEqual({ date, time });
+  expect(recordingDateTime(zone, now)).toEqual({ date, time });
+});
+it('formats midnight as 00 rather than 24 and refreshes defaults on the next call', () => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T17:00:00Z'));
+  expect(recordingDateTime(timezone)).toEqual({ date: '2026-09-06', time: '00:00' });
+  vi.setSystemTime(new Date('2026-09-06T17:05:00Z'));
+  expect(recordingDateTime(timezone)).toEqual({ date: '2026-09-07', time: '00:05' });
+});
 
 it('uses the actual save time when neither optional field is selected', () => {
   vi.useFakeTimers(); vi.setSystemTime(now);

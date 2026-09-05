@@ -1,4 +1,11 @@
 import { DataError } from '../domain/events';
+import { dayKey } from '../domain/summary';
+
+/** Default date/time fields to one instant in the family's timezone. */
+export function recordingDateTime(timezone: string, at = Date.now()) {
+  const parts = new Intl.DateTimeFormat('en', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+  return { date: dayKey(at, timezone), time: ['hour', 'minute'].map(key => parts.find(part => part.type === key)!.value).join(':') };
+}
 
 /** Resolve optional wall-clock fields in the family's timezone, never the device's. */
 export function recordingTime(date: string, time: string, timezone: string, now = Date.now(), options: { allowFuture?: boolean } = {}): number {

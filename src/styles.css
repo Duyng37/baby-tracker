@@ -43,11 +43,7 @@ input::placeholder, textarea::placeholder { color: var(--secondary); opacity: .8
 input:disabled, select:disabled, textarea:disabled { background: var(--subtle); color: var(--secondary); opacity: .7; cursor: not-allowed; }
 input[readonly], textarea[readonly] { background: var(--subtle); }
 input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--danger); }
-input[type="time"], input[type="number"] { font-variant-numeric: tabular-nums; }
-/* The remaining native time widget must share the standard field height, including when empty on iOS. */
-input[type="time"] { -webkit-appearance: none; appearance: none; height: 50px; max-width: 100%; margin: 0; }
-input::-webkit-date-and-time-value { min-height: 1.5em; text-align: left; }
-input::-webkit-datetime-edit { min-width: 0; padding: 0; }
+input[type="number"] { font-variant-numeric: tabular-nums; }
 input:-webkit-autofill { -webkit-text-fill-color: var(--ink); box-shadow: 0 0 0 1000px var(--surface) inset; }
 input:-webkit-autofill:focus { box-shadow: 0 0 0 1000px var(--surface) inset, 0 0 0 3px var(--focus-halo); }
 textarea { min-height: 112px; resize: vertical; }
@@ -129,11 +125,11 @@ code { overflow-wrap: anywhere; }
 .journal-filters > label, .journal-date-field { flex: 1 1 150px; }
 .journal-date-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; align-self: flex-end; }
 .journal-filters select, .journal-date-text { height: 50px; }
-.date-input { position: relative; min-width: 0; }
-.date-input-control { position: relative; min-width: 0; }
-.date-input-text { padding-right: 48px; font-variant-numeric: tabular-nums; }
-.date-input-trigger { position: absolute; top: 1px; right: 1px; width: 44px; min-height: 48px; padding: 10px; color: var(--soft-ink); }
-.date-input-calendar { position: absolute; z-index: 3; top: calc(100% + 6px); left: 0; width: min(304px, calc(100vw - 32px)); padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 8px 24px var(--shadow); }
+.date-input, .time-input { position: relative; min-width: 0; }
+.date-input-control, .time-input-control { position: relative; min-width: 0; }
+.date-input-text, .time-input-text { height: 50px; padding-right: 48px; font-variant-numeric: tabular-nums; }
+.date-input-trigger, .time-input-trigger { position: absolute; top: 1px; right: 1px; width: 44px; min-height: 48px; padding: 10px; color: var(--soft-ink); }
+.time-input-popover, .date-input-calendar { position: absolute; z-index: 3; top: calc(100% + 6px); left: 0; width: min(304px, calc(100vw - 32px)); padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 8px 24px var(--shadow); }
 .date-input-month { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; text-align: center; gap: 4px; font-size: .8125rem; }
 .date-input-month .icon-button { width: 40px; min-height: 40px; padding: 6px; }
 .date-input-weekdays, .date-input-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; }
@@ -141,6 +137,19 @@ code { overflow-wrap: anywhere; }
 .date-input-days { gap: 2px; margin-top: 4px; }
 .date-input-days button { min-width: 0; min-height: 36px; padding: 4px; border: 0; border-radius: 9px; background: transparent; font-size: .8125rem; }
 .date-input-days button[aria-pressed="true"] { background: var(--tint); color: var(--soft-ink); }
+.time-input-popover { left: auto; right: 0; width: min(256px, calc(100vw - 64px)); }
+.time-input-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 10px; font-size: .8125rem; }
+.time-input-heading output { color: var(--soft-ink); font-variant-numeric: tabular-nums; }
+.time-input-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.time-input-column { min-width: 0; text-align: center; }
+.time-input-caption { display: block; margin-bottom: 6px; color: var(--secondary); font-size: .6875rem; }
+.time-input-options { display: grid; gap: 2px; max-height: min(192px, 30dvh); overflow-y: auto; overscroll-behavior: contain; padding: 4px; border: 1px solid var(--line); border-radius: 10px; scrollbar-width: thin; scrollbar-color: var(--field-line) transparent; }
+.time-input-options button { min-width: 0; min-height: 40px; padding: 6px; border: 0; border-radius: 9px; background: transparent; font-size: .8125rem; font-variant-numeric: tabular-nums; }
+.time-input-options button[aria-pressed="true"] { background: var(--tint); color: var(--soft-ink); }
+.time-input-options button:hover { background: var(--subtle); }
+.time-input-options button:focus-visible { outline-offset: -2px; }
+.time-input-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.time-input-actions button { min-height: 40px; padding: 8px; font-size: .8125rem; }
 .journal { list-style: none; padding: 0; margin: 0; }
 .journal li + li { border-top: 1px solid var(--line); }
 .event-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 76px; padding: 16px 4px; text-align: left; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-weight: 400; }
@@ -226,6 +235,12 @@ input::file-selector-button { font: inherit; border: 1px solid var(--line); bord
 .vaccination-badge[data-overdue="true"] { background: var(--warning-bg); color: var(--warning-ink); }
 .vaccination-list time { font-size: .8125rem; font-variant-numeric: tabular-nums; }
 .vaccination-list p { overflow-wrap: anywhere; }
+.medication-schedule > .section-heading { margin-bottom: 0; }
+.care-plan-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.care-plan { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 8px; text-align: left; padding: 14px; font-size: .8125rem; font-weight: 400; overflow-wrap: anywhere; }
+.care-plan-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.care-plan-heading > strong { flex: 1 1 140px; min-width: 0; }
+.care-plan time { font-variant-numeric: tabular-nums; }
 .settings-group { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 0 14px; }
 .setting-row { display: flex; justify-content: flex-start; text-align: left; gap: 12px; width: 100%; min-height: 72px; padding: 14px 2px; border: 0; border-radius: 0; background: transparent; }
 .setting-row + .setting-row { border-top: 1px solid var(--line); }
@@ -305,4 +320,5 @@ input::file-selector-button { font: inherit; border: 1px solid var(--line); bord
   .switch-thumb { background: ButtonText; forced-color-adjust: none; }
   .theme-setting[aria-checked="true"] > .switch-track { background: Highlight; forced-color-adjust: none; }
   .theme-setting[aria-checked="true"] .switch-thumb { background: HighlightText; }
+  .time-input-options button[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -2px; }
 }

@@ -4,29 +4,38 @@ import { dayKey } from '../domain/summary';
 import type { EventBody, QuickEventType } from '../domain/types';
 import { Icon } from './Icon';
 import { DateInput } from './DateInput';
+import { TimeInput } from './TimeInput';
 import { quickRecord, type DiaperKind, type Milk, type QuickChoice } from './quick-record';
+import { recordingDateTime } from './recording-time';
 
 export function QuickRecord({ type, running, timezone, saving, milk, onMilkChange, onSave }: {
   type: QuickEventType; running?: EventBody; timezone: string; saving: boolean;
   milk: Milk; onMilkChange: (milk: Milk) => void; onSave: (body: EventBody) => void;
 }) {
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [wakeDate, setWakeDate] = useState('');
-  const [wakeTime, setWakeTime] = useState('');
+  const [initial] = useState(() => { const now = Date.now(); return { now, ...recordingDateTime(timezone, now) }; });
+  const [date, setDate] = useState(initial.date);
+  const [time, setTime] = useState(initial.time);
+  const [wakeDate, setWakeDate] = useState(initial.date);
+  const [wakeTime, setWakeTime] = useState(initial.time);
+  const [hasWakeTime, setHasWakeTime] = useState(false);
   const [error, setError] = useState('');
   const hint = useId();
   const wakeHint = useId();
   function record(choice: QuickChoice) {
-    try { const body = quickRecord(choice, date, time, timezone); setError(''); onSave(body); }
+    try {
+      // Retain seconds for the default stop so it cannot precede a timer started in the same minute.
+      const defaultStop = choice.type === 'stop' && date === initial.date && time === initial.time;
+      const body = defaultStop ? quickRecord(choice, '', '', timezone, initial.now) : quickRecord(choice, date, time, timezone);
+      setError(''); onSave(body);
+    }
     catch (error) { setError(error instanceof DataError ? error.message : 'Chưa đọc được ngày/giờ. Vui lòng kiểm tra lại.'); }
   }
   return <div className="stack">
     <fieldset className="record-time" disabled={saving} aria-describedby={hint}>
       <legend>{running ? 'Thời điểm kết thúc' : type === 'sleep' ? 'Thời điểm bắt đầu ngủ' : 'Thời điểm ghi nhận'} (không bắt buộc)</legend>
       <div className="row"><label>Ngày<DateInput name="date" value={date} max={dayKey(Date.now(), timezone)} onChange={setDate} ariaLabel="Chọn ngày ghi nhận" /></label>
-        <label>Giờ<input name="time" type="time" value={time} onChange={e => setTime(e.target.value)} /></label></div>
-      <p id={hint} className="muted">Ô để trống dùng ngày/giờ hiện tại lúc lưu. Múi giờ: {timezone}.</p>
+        <label>Giờ<TimeInput name="time" value={time} disabled={saving} onChange={setTime} ariaLabel="Giờ" /></label></div>
+      <p id={hint} className="muted">Điền sẵn ngày/giờ hiện tại khi mở. Bạn có thể đổi để ghi bù. Múi giờ: {timezone}.</p>
     </fieldset>
     {error && <p className="form-feedback" role="alert">{error}</p>}
     {running ? <><p className="sheet-intro">Chọn thời điểm nếu cần ghi bù, rồi xác nhận kết thúc.</p>
@@ -47,13 +56,17 @@ export function QuickRecord({ type, running, timezone, saving, milk, onMilkChang
         <div className="presets presets--two"><button disabled={saving} onClick={() => record({ type, side: 'left' })}><Icon name="breast" />Bên trái</button>
           <button disabled={saving} onClick={() => record({ type, side: 'right' })}><Icon name="breast" />Bên phải</button></div>
       </> : <>
-        <fieldset className="record-time" disabled={saving} aria-describedby={wakeHint}>
+        <label>Trạng thái giấc ngủ<select name="sleepStatus" value={hasWakeTime ? 'awake' : 'sleeping'} disabled={saving} onChange={event => {
+          const awake = event.target.value === 'awake'; setHasWakeTime(awake); setError('');
+          if (awake) { const current = recordingDateTime(timezone); setWakeDate(current.date); setWakeTime(current.time); }
+        }}><option value="sleeping">Bé vẫn đang ngủ</option><option value="awake">Bé đã thức</option></select></label>
+        <fieldset className="record-time" disabled={saving || !hasWakeTime} aria-describedby={wakeHint}>
           <legend>Thời điểm thức giấc (không bắt buộc)</legend>
           <div className="row"><label>Ngày thức giấc<DateInput name="wakeDate" value={wakeDate} max={dayKey(Date.now(), timezone)} onChange={setWakeDate} ariaLabel="Chọn ngày thức giấc" /></label>
-            <label>Giờ thức giấc<input name="wakeTime" type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)} /></label></div>
-          <p id={wakeHint} className="muted">Để trống cả hai ô nếu bé vẫn đang ngủ. Nếu chỉ nhập giờ thức, dùng ngày bắt đầu ngủ; ngủ qua đêm thì chọn thêm ngày thức giấc.</p>
+            <label>Giờ thức giấc<TimeInput name="wakeTime" value={wakeTime} disabled={saving || !hasWakeTime} onChange={setWakeTime} ariaLabel="Giờ thức giấc" /></label></div>
+          <p id={wakeHint} className="muted">Chọn “Bé đã thức” để lưu thời điểm thức giấc. Ngày/giờ được điền sẵn hiện tại; bạn có thể đổi để ghi bù, kể cả giấc ngủ qua đêm.</p>
         </fieldset>
         <p className="sheet-intro">Có thể ghi bù cả giấc ngủ đã kết thúc trong một lần lưu.</p>
-        <button className="primary" disabled={saving} onClick={() => record({ type: 'sleep', wakeDate, wakeTime })}><Icon name="sleep" />{saving ? 'Đang lưu…' : 'Lưu giấc ngủ'}</button></>}
+        <button className="primary" disabled={saving} onClick={() => record({ type: 'sleep', ...(hasWakeTime ? { wakeDate, wakeTime } : {}) })}><Icon name="sleep" />{saving ? 'Đang lưu…' : 'Lưu giấc ngủ'}</button></>}
   </div>;
 }

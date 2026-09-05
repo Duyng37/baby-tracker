@@ -55,9 +55,9 @@ Chỉ chấp nhận đúng các khóa sau, không có `created_by`, `updated_by`
 
 | Khóa | Kiểu / yêu cầu |
 | --- | --- |
-| `type` | `bottle`, `diaper`, `sleep`, `breast`; không đổi type của event đã có |
+| `type` | `bottle`, `diaper`, `sleep`, `breast`, `vaccination`, `medication`, `meal`, `growth`, `activity`; không đổi type của event đã có |
 | `started_at` | ISO 8601 có `T` và timezone offset hoặc `Z` |
-| `ended_at` | ISO 8601 hoặc null; bottle/diaper phải null |
+| `ended_at` | ISO 8601 hoặc null; mọi loại trừ sleep/breast phải null |
 | `payload` | Object theo loại, không có khóa thừa |
 | `note` | Chuỗi tối đa 500 ký tự, dùng chuỗi rỗng nếu không có ghi chú |
 | `deleted` | Boolean; server tự đặt `deleted_at` khi nhận true |
@@ -69,11 +69,22 @@ Payload theo loại:
 - Sleep: object rỗng; `ended_at = null` là timer đang chạy.
 - Breast: `segments` gồm 1–200 object có `side` (`left`/`right`), `started_at`, `ended_at`.
   Các đoạn phải nối liên tục, khớp đầu/cuối event; chỉ đoạn cuối được mở khi timer chạy.
+- Vaccination: `vaccine` bắt buộc, tối đa 120 ký tự; `dose` tối đa 40; `location` tối đa 160;
+  `status` là `planned` hoặc `completed`.
+- Medication: `name` bắt buộc, tối đa 120 ký tự; `dose` tối đa 80;
+  `status` là `planned` hoặc `completed`. Mỗi event là một lần uống, không phải đơn thuốc lặp.
+- Meal: `food` bắt buộc, tối đa 160 ký tự; `amount` tối đa 80.
+- Growth: `height_cm` và `weight_kg` là số dương hoặc null, ít nhất một số đo;
+  giới hạn dữ liệu lần lượt 250 cm và 300 kg, không phải chuẩn sức khỏe.
+- Activity: `kind` thuộc `bath`, `tummy_time`, `outdoor`, `indoor`, `brushing_teeth`;
+  `duration_minutes` là null hoặc số dương ≤ 1440. Không phải timer đang chạy.
+- Các khóa payload đều phải có; chuỗi tùy chọn dùng chuỗi rỗng, số tùy chọn dùng null.
 
 Wireframe dùng một số tên field/value khác (`amount`, `expressed`, `startedAt`);
 không gửi thẳng object demo lên API. Cần adapter/validation ở frontend thật.
 Giới hạn 2000 ml là hàng rào dữ liệu, **không phải hướng dẫn y tế**.
-Server cho lệch giờ tương lai tối đa 5 phút; client vẫn cần cảnh báo giờ chưa hợp lệ.
+Server cho lệch giờ tương lai tối đa 5 phút, trừ vaccination/medication có status `planned`.
+Client vẫn kiểm tra ngày/giờ và yêu cầu thời điểm thực tế khi đánh dấu hoàn tất.
 
 ## Idempotency và conflict
 

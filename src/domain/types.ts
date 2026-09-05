@@ -1,4 +1,5 @@
 export type Side = 'left' | 'right';
+export type ActivityKind = 'bath' | 'tummy_time' | 'outdoor' | 'indoor' | 'brushing_teeth';
 export type Segment = { side: Side; started_at: string; ended_at: string | null };
 type Common = { started_at: string; ended_at: string | null; note: string; deleted: boolean };
 export type EventBody = Common & (
@@ -7,8 +8,14 @@ export type EventBody = Common & (
   | { type: 'sleep'; payload: Record<string, never> }
   | { type: 'breast'; payload: { segments: Segment[] } }
   | { type: 'vaccination'; payload: { vaccine: string; dose: string; status: 'planned' | 'completed'; location: string } }
+  | { type: 'medication'; payload: { name: string; dose: string; status: 'planned' | 'completed' } }
+  | { type: 'meal'; payload: { food: string; amount: string } }
+  | { type: 'growth'; payload: { height_cm: number | null; weight_kg: number | null } }
+  | { type: 'activity'; payload: { kind: ActivityKind; duration_minutes: number | null } }
 );
-export type QuickEventType = Exclude<EventBody['type'], 'vaccination'>;
+export type QuickEventType = 'bottle' | 'diaper' | 'sleep' | 'breast';
+export type CareEventType = 'medication' | 'meal' | 'growth' | 'activity';
+export type CareBody = Extract<EventBody, { type: CareEventType }>;
 export type VaccinationBody = Extract<EventBody, { type: 'vaccination' }>;
 export type VaccinationStatus = VaccinationBody['payload']['status'];
 export type Scope = { family_id: string; baby_id: string };

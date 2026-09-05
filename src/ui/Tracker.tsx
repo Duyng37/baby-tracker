@@ -3,16 +3,17 @@ import { LocalStore } from '../data/store';
 import { useStore } from '../data/useStore';
 import { useSync } from '../sync/useSync';
 import { changeTimer, DataError, isRunning } from '../domain/events';
-import { dayKey, duration, labels, summarize } from '../domain/summary';
-import type { EventBody, LocalEvent, QuickEventType, Scope, VaccinationStatus } from '../domain/types';
+import { dayKey, duration, labels, summarizeDay } from '../domain/summary';
+import type { ActivityKind, CareEventType, EventBody, LocalEvent, QuickEventType, Scope, VaccinationStatus } from '../domain/types';
 import { signOut } from '../cloud/supabase';
 import { Sheet } from './Sheet';
 import { OnlineSetup } from './OnlineSetup';
 import { Invitation } from './Invitation';
 import { Icon } from './Icon';
 import { LoadingScreen } from './LoadingScreen';
-import { eventDetail, Journal, journalEvents } from './Journal';
+import { eventDetail, isJournalBody, Journal, journalEvents } from './Journal';
 import { JournalDateInput } from './JournalDateInput';
+import { formatDate } from './DateInput';
 import { Metrics } from './Metrics';
 import { useTheme } from './theme';
 import { saveUnchangedEvent } from './event-edits';
@@ -26,21 +27,27 @@ import { RenameProfile } from './RenameProfile';
 import { ThemeSwitch } from './ThemeSwitch';
 import { VaccinationSchedule } from './VaccinationSchedule';
 import { VaccinationForm } from './VaccinationForm';
+import { CareActions } from './CareActions';
+import { CareForm } from './CareForm';
+import { isCareBody, isCareType } from './care-record';
+import { MedicationSchedule } from './MedicationSchedule';
 import { scheduleToastDismiss } from './toast';
 import type { RenameTarget } from '../cloud/rename-profile';
 
-type Screen = 'today' | 'journal' | 'family';
+type Screen = 'today' | 'journal' | 'care' | 'family';
 type Panel = null | 'switch' | EventBody['type'] | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | LocalEvent;
 function isQuickPanel(panel: Panel): panel is QuickEventType {
   return typeof panel === 'string' && ['bottle', 'diaper', 'breast', 'sleep'].includes(panel);
 }
-const screens: [Screen, string][] = [['today', 'Hôm nay'], ['journal', 'Nhật ký'], ['family', 'Gia đình']];
+const screens: [Screen, string][] = [['today', 'Hôm nay'], ['journal', 'Nhật ký'], ['care', 'Chăm con'], ['family', 'Gia đình']];
 const descriptions: Record<Screen, string> = {
   today: 'Từng điều nhỏ, cùng con lớn lên.', journal: 'Nhìn lại nhẹ nhàng và nhớ giúp bạn những nhịp sinh hoạt của con.',
+  care: 'Từ cữ bú đến giờ chơi, cùng con lớn lên mỗi ngày.',
   family: 'Cùng nhau chăm bé, sẻ chia mỗi ngày.',
 };
 const panelTitles = { switch: 'Chọn bé', bottle: 'Ghi bình sữa', diaper: 'Thay tã', breast: 'Bắt đầu bú mẹ', sleep: 'Ghi giấc ngủ',
   vaccination: 'Thêm lịch tiêm chủng',
+  medication: 'Lịch uống thuốc', meal: 'Ghi ăn uống', growth: 'Ghi chiều cao, cân nặng', activity: 'Ghi hoạt động',
   'new-family': 'Thêm gia đình', 'new-baby': 'Thêm bé', invite: 'Mời người chăm sóc', join: 'Tham gia gia đình', signout: 'Đăng xuất trên thiết bị', backup: 'Sao lưu và khôi phục', rename: 'Đổi tên hồ sơ' };
 
 export function Tracker({ store, localOnly = false }: { store: LocalStore; localOnly?: boolean }) {
@@ -52,6 +59,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   const [selected, setSelected] = useState('');
   const [panel, setPanel] = useState<Panel>(null);
   const [quickTimer, setQuickTimer] = useState<LocalEvent>();
+  const [activityKind, setActivityKind] = useState<ActivityKind>('bath');
   const [vaccinationStatus, setVaccinationStatus] = useState<VaccinationStatus>();
   const [renameTarget, setRenameTarget] = useState<RenameTarget>();
   const [notice, setNotice] = useState('');
@@ -109,6 +117,9 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   function openVaccination(event?: LocalEvent, status?: VaccinationStatus) {
     setVaccinationStatus(status); openPanel(event ?? 'vaccination');
   }
+  function openCare(type: QuickEventType | CareEventType, kind: ActivityKind = 'bath') {
+    setActivityKind(kind); openPanel(type);
+  }
   async function write(action: () => Promise<void>, successMessage: string, focusContent = false) {
     if (writing.current || Date.now() - lastWrite.current < 350) return;
     writing.current = true; lastWrite.current = Date.now(); setSaving(true); setNotice('');
@@ -142,8 +153,10 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       setUndo(null);
     }, 'Đã khôi phục ghi nhận.', true);
   }
-  const visible = journalEvents(events, screen === 'today' ? today : date || today, timezone, screen === 'today' ? 'all' : filter);
-  const summary = summarize(events, now - 86_400_000, now);
+  const journalDay = screen === 'journal' ? date || today : today;
+  const visible = journalEvents(events, journalDay, timezone, screen === 'today' ? 'all' : filter);
+  const summary = summarizeDay(events, journalDay, timezone, now);
+  const summaryTitle = journalDay === today ? 'Ngày hôm nay' : `Tổng hợp ngày ${formatDate(journalDay)}`;
   const timeLabel = (time: string) => new Intl.DateTimeFormat('vi', { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(new Date(time));
   const syncLabel = localOnly ? 'Chỉ trên thiết bị · chưa xác nhận phiên cloud' : !sync.online ? 'Offline · ghi trên máy vẫn hoạt động' : sync.busy ? 'Đang đồng bộ…'
     : sync.message ? 'Chưa hoàn tất đồng bộ'
@@ -188,24 +201,29 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
             <div className="row">{event.body.type === 'breast' && <button disabled={saving} onClick={() => timer(event, 'switch')}><Icon name="swap" />Đổi bên</button>}
               <button className="primary" disabled={saving} onClick={() => timer(event, 'stop')}>{event.body.type === 'sleep' ? 'Đã thức' : 'Kết thúc'}</button></div>
           </article>)}</section>}
-          {(screen === 'today' || screen === 'journal') && <section aria-label="Tổng hợp 24 giờ qua"><div className="section-heading"><h2>24 giờ qua</h2><small>{baby.nickname}</small></div>
+          {(screen === 'today' || screen === 'journal') && <section aria-label={summaryTitle}><div className="section-heading"><h2>{summaryTitle}</h2><small>{baby.nickname}</small></div>
             <Metrics summary={summary} />
-            <div className="disclaimer"><Icon name="info" /><p className="muted">Tính cả timer đang chạy. Đây là nhật ký, không phải đánh giá sức khỏe hay hướng dẫn lượng sữa.</p></div>
+            <div className="disclaimer"><Icon name="info" /><p className="muted">Tính theo múi giờ gia đình, gồm timer đang chạy; chỉ cộng thời gian trong ngày đang xem, không vượt quá hiện tại. Đây là nhật ký, không phải đánh giá sức khỏe hay hướng dẫn lượng sữa.</p></div>
           </section>}
           {(screen === 'today' || screen === 'journal') && <section><div className="section-heading"><h2>{screen === 'today' ? 'Nhịp hôm nay' : `Nhật ký · ${baby.nickname}`}</h2>
             {screen === 'today' ? <button className="text-button" onClick={() => navigate('journal')}>Xem nhật ký<Icon name="chevron" /></button> : <small>{visible.length} hoạt động</small>}</div>
-            {screen === 'journal' && <div className="row journal-filters"><JournalDateInput key={baby.id} value={date || today} onChange={setDate} />
+            {screen === 'journal' && <div className="row journal-filters"><JournalDateInput key={baby.id} value={journalDay} onChange={setDate} />
               <label>Hoạt động<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả</option>{Object.entries(labels).filter(([key]) => key !== 'vaccination').map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>}
             {!visible.length && <div className="empty"><Icon name="journal" /><h3>{screen === 'journal' ? 'Chưa có hoạt động phù hợp.' : 'Một khoảng trống nhỏ, sẵn sàng để ghi.'}</h3><p>{screen === 'journal' ? 'Thử chọn ngày hoặc hoạt động khác. Khi ghi nhanh, bạn có thể chọn ngày/giờ để ghi bù.' : `Chạm một trong bốn nút bên dưới để ghi cho ${baby.nickname}.`}</p></div>}
             <Journal events={visible} timezone={timezone} onSelect={openPanel} />
           </section>}
-          {screen === 'journal' && <section className="card stack"><div className="section-heading"><h2>7 ngày gần nhất</h2><Icon name="insights" /></div><p>Đã ghi {events.filter(e => !e.body.deleted && e.body.type !== 'vaccination' && Date.parse(e.body.started_at) >= now - 7 * 86_400_000).length} hoạt động cho {baby.nickname}.</p><p className="muted">Mỗi ghi nhận là một chút an tâm. Biểu đồ theo ngày sẽ được bổ sung; bạn có thể xuất bản sao lưu ở màn Gia đình.</p></section>}
+          {screen === 'journal' && <section className="card stack"><div className="section-heading"><h2>7 ngày gần nhất</h2><Icon name="insights" /></div><p>Đã ghi {events.filter(e => isJournalBody(e.body) && Date.parse(e.body.started_at) >= now - 7 * 86_400_000).length} hoạt động cho {baby.nickname}.</p><p className="muted">Mỗi ghi nhận là một chút an tâm. Biểu đồ theo ngày sẽ được bổ sung; bạn có thể xuất bản sao lưu ở màn Gia đình.</p></section>}
+          {screen === 'care' && scope && <section className="stack">
+            <CareActions babyName={baby.nickname} running={mine} saving={saving} onAction={openCare} />
+            <MedicationSchedule events={events} scope={scope} babyName={baby.nickname} timezone={timezone} now={now} saving={saving}
+              onAdd={() => openCare('medication')} onEdit={openPanel} />
+            <VaccinationSchedule events={events} scope={scope} babyName={baby.nickname} timezone={timezone} now={now} saving={saving}
+              onAdd={status => openVaccination(undefined, status)} onEdit={event => openVaccination(event)} onComplete={event => openVaccination(event, 'completed')} />
+          </section>}
           {screen === 'family' && <section className="stack"><article className="card stack">
             {family && <FamilyProfiles family={family} babies={view.workspace.babies} owner={own} memberCount={view.workspace.memberships.filter(m => m.family_id === family.id).length}
               canEdit={!localOnly && sync.online} onRename={target => { setRenameTarget(target); openPanel('rename'); }} />}
             {own && <div className="family-actions"><button disabled={localOnly} onClick={() => openPanel('new-baby')}><Icon name="plus" />Thêm bé</button><button disabled={localOnly} onClick={() => openPanel('invite')}><Icon name="family" />Mời người chăm sóc</button></div>}</article>
-            {scope && <VaccinationSchedule events={events} scope={scope} babyName={baby.nickname} timezone={timezone} now={now} saving={saving}
-              onAdd={status => openVaccination(undefined, status)} onEdit={event => openVaccination(event)} onComplete={event => openVaccination(event, 'completed')} />}
             <div className="settings-group">
               <button className="setting-row" disabled={localOnly} onClick={() => openPanel('new-family')}><Icon name="plus" /><span><strong>Tạo gia đình khác</strong><small>Mỗi gia đình một không gian riêng</small></span><Icon name="chevron" /></button>
               <button className="setting-row" disabled={localOnly} onClick={() => openPanel('join')}><Icon name="family" /><span><strong>Nhận lời mời</strong><small>Cùng người thân chăm sóc bé</small></span><Icon name="chevron" /></button>
@@ -221,7 +239,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     {baby && <footer className="footer"><QuickActions babyName={baby.nickname} running={mine} saving={saving} onAction={openPanel} />
       <nav className="bottom-nav" aria-label="Điều hướng chính">{screens.map(([key, label]) => <button key={key} aria-current={screen === key ? 'page' : undefined} onClick={() => navigate(key)}><Icon name={key} />{label}</button>)}</nav></footer>}
     {panel && <Sheet title={typeof panel === 'object' ? panel.body.type === 'vaccination' ? 'Cập nhật lịch tiêm chủng' : 'Chi tiết ghi nhận' : isQuickPanel(panel) && quickTimer ? panel === 'sleep' ? 'Kết thúc giấc ngủ' : 'Kết thúc bú mẹ' : panelTitles[panel]} onClose={() => setPanel(null)} dismissOnBackdrop={panel === 'switch'}>
-      {baby && (typeof panel === 'object' || isQuickPanel(panel) || panel === 'vaccination') && <p className="sheet-scope">{baby.nickname} · {family?.name}</p>}
+      {baby && (typeof panel === 'object' || isQuickPanel(panel) || panel === 'vaccination' || isCareType(panel)) && <p className="sheet-scope">{baby.nickname} · {family?.name}</p>}
       {panel === 'switch' && view.workspace.families.map(f => <section key={f.id}><h3>{f.name}</h3>{view.workspace.babies.filter(b => b.family_id === f.id).map(b => <button className="baby-option" key={b.id} onClick={() => {
         setSelected(b.id); setPanel(null); void store.db.state.put({ key: 'selectedBaby', value: b.id }).catch(() => setNotice('Chưa lưu được lựa chọn bé.'));
       }} aria-pressed={baby?.id === b.id}><span className="avatar" aria-hidden="true">{b.nickname.slice(0, 1)}</span><span>{b.nickname}</span>{baby?.id === b.id && <Icon name="check" />}</button>)}</section>)}
@@ -232,7 +250,10 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
         body={typeof panel === 'object' && panel.body.type === 'vaccination' ? panel.body : undefined}
         onSave={body => typeof panel === 'object' ? change(panel, body) : create(body)}
         onDelete={typeof panel === 'object' ? () => change(panel, { ...panel.body, deleted: true }, true) : undefined} />}
-      {typeof panel === 'object' && panel.body.type !== 'vaccination' && <form className="stack" onSubmit={e => { e.preventDefault(); change(panel, { ...panel.body, note: String(new FormData(e.currentTarget).get('note') ?? '') }); }}><div className="card stack"><p className="sheet-intro">{labels[panel.body.type]} · {timeLabel(panel.body.started_at)}</p><p>{eventDetail(panel.body)}</p></div><label>Ghi chú<textarea name="note" maxLength={500} placeholder="Một điều nhỏ bạn muốn nhớ…" defaultValue={panel.body.note} /></label><button className="primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu trên máy'}</button><button type="button" className="danger-button" disabled={saving} onClick={() => change(panel, { ...panel.body, deleted: true }, true)}>Xóa ghi nhận</button></form>}
+      {typeof panel === 'string' && isCareType(panel) && <CareForm key={panel} type={panel} kind={activityKind} timezone={timezone} saving={saving} onSave={create} />}
+      {typeof panel === 'object' && isCareBody(panel.body) && <CareForm key={panel.id} type={panel.body.type} body={panel.body} timezone={timezone} saving={saving}
+        onSave={body => change(panel, body)} onDelete={() => change(panel, { ...panel.body, deleted: true }, true)} />}
+      {typeof panel === 'object' && panel.body.type !== 'vaccination' && !isCareBody(panel.body) && <form className="stack" onSubmit={e => { e.preventDefault(); change(panel, { ...panel.body, note: String(new FormData(e.currentTarget).get('note') ?? '') }); }}><div className="card stack"><p className="sheet-intro">{labels[panel.body.type]} · {timeLabel(panel.body.started_at)}</p><p>{eventDetail(panel.body)}</p></div><label>Ghi chú<textarea name="note" maxLength={500} placeholder="Một điều nhỏ bạn muốn nhớ…" defaultValue={panel.body.note} /></label><button className="primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu trên máy'}</button><button type="button" className="danger-button" disabled={saving} onClick={() => change(panel, { ...panel.body, deleted: true }, true)}>Xóa ghi nhận</button></form>}
       {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
         onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}

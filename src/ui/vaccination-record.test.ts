@@ -55,6 +55,10 @@ it('uses the correct date around midnight in the family timezone and rejects non
   expect(vaccinationDraft(timezone, undefined, 'completed', Date.parse('2026-09-05T18:00:00Z'))).toMatchObject({ date: '2026-09-06', time: '01:00' });
   expect(() => vaccinationRecord({ ...draft, date: '2027-03-14', time: '02:30' }, 'America/New_York', now)).toThrow('không tồn tại');
 });
+it('preserves the recorded date/time when editing a completed vaccination', () => {
+  const body = vaccinationRecord({ ...draft, status: 'completed', date: '2026-09-03', time: '09:15' }, timezone, now);
+  expect(vaccinationDraft(timezone, body, undefined, now)).toMatchObject({ date: '2026-09-03', time: '09:15', status: 'completed' });
+});
 it.each([
   { vaccine: 'Another' }, { dose: 'Mũi 2' }, { location: 'Other' }, { status: 'completed' as const },
 ])('includes changed payload fields in conflict and backup comparisons %j', change => {

@@ -18,7 +18,7 @@ const rpcNames = [
 const vaultNames = ['bff_session_create', 'bff_session_read', 'bff_session_claim', 'bff_session_save', 'bff_session_delete'];
 
 test('static: ordered migrations are transaction-wrapped, with no destructive DDL', () => {
-  assert.equal(files.length, 6);
+  assert.equal(files.length, 7);
   for (const migration of migrations) {
     const source = migration.replace(/--[^\n]*/g, '').trim();
     assert.match(source, /^begin;/i);
@@ -41,7 +41,7 @@ test('static: every application table enables RLS, no direct client writes', () 
 
 test('static: every function fixes search_path; each public RPC has an explicit ACL', () => {
   const functions = [...sql.matchAll(/create (?:or replace )?function ([a-z_.]+)\(([\s\S]*?)\$\$;/g)];
-  assert.equal(functions.length, 23);
+  assert.equal(functions.length, 25);
   assert.deepEqual([...new Set(functions.filter(([_, name]) => name.startsWith('public.')).map(([_, name]) => name.slice(7)))].sort(), [...rpcNames, ...vaultNames].sort());
   for (const [, name, definition] of functions) {
     assert.match(definition, /set search_path = ''/);
@@ -119,4 +119,13 @@ test('static: profile renames require owner locks, compare old names and never m
   }
   const baby = sql.match(/create function public\.rename_baby\([\s\S]*?\$\$;/)[0];
   assert.match(baby, /where id = p_baby_id and family_id = p_family_id/);
+});
+
+test('static: care migration only broadens event types and planned-time validation in apply_event', () => {
+  const previous = migrations[5].match(/create or replace function public\.apply_event[\s\S]*?\$\$;/)[0];
+  const care = migrations[6].match(/create or replace function public\.apply_event[\s\S]*?\$\$;/)[0];
+  assert.equal(care, previous.replace("'diaper', 'vaccination')", "'diaper', 'vaccination', 'medication', 'meal', 'growth', 'activity')")
+    .replace("p_event->>'type' = 'vaccination'", "p_event->>'type' in ('vaccination', 'medication')"));
+  const testSql = readFileSync(new URL('../supabase/tests/care-events.sql', import.meta.url), 'utf8');
+  assert.match(testSql, /rollback;/i); assert.doesNotMatch(testSql, /commit;/i);
 });

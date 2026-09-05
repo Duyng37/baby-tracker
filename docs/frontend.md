@@ -12,16 +12,41 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 - Chủ gia đình có thể đổi tên gia đình và từng bé trong màn Gia đình. Cần mạng/phiên hợp lệ;
   tải lại workspace sau khi lưu, không đổi ID/nhật ký. Tên đã đổi từ nơi khác sẽ báo xung đột.
 - Chọn bé/gia đình, ghi bình/tã/bú mẹ/ngủ; kết thúc/đổi bên timer, ghi chú, xóa/hoàn tác.
-- Ghi ngủ có ngày/giờ bắt đầu và ngày/giờ thức giấc riêng: để trống thời điểm thức thì
-  timer tiếp tục chạy, nhập giờ thức thì lưu giấc ngủ đã kết thúc. Nếu chỉ nhập giờ thức,
-  dùng ngày bắt đầu ngủ; giấc qua đêm cần chọn ngày thức. Không tự đoán giờ khi chỉ nhập ngày thức.
-- Tổng hợp 24 giờ gần nhất theo bé; lọc ngày nhật ký theo timezone gia đình.
+- Các trường ngày/giờ ghi nhận mới điền sẵn ngày hôm nay và giờ hiện tại khi mở form,
+  theo múi giờ gia đình; lịch dự kiến vẫn để trống, sửa bản ghi giữ thời điểm đã lưu.
+- Bộ chọn giờ dùng cùng màu, bo góc và nút icon với bộ chọn ngày, không dùng popup giờ
+  của hệ điều hành. Nhập trực tiếp `HH:mm` (hoặc 4 chữ số), hoặc chọn giờ/phút rồi bấm
+  **Xong**; **Hủy**/Escape không đổi giá trị. Hỗ trợ phím mũi tên, Home/End và cả hai theme.
+- Ghi ngủ có ngày/giờ bắt đầu và ngày/giờ thức giấc riêng. Mặc định **Bé vẫn đang ngủ**
+  để timer tiếp tục chạy, không dùng thời điểm thức điền sẵn. Chọn **Bé đã thức** để bật
+  các ô thức giấc với ngày/giờ hiện tại; có thể sửa cả hai thời điểm để ghi bù giấc qua đêm.
+- Tab Hôm nay hiển thị “Ngày hôm nay”, tổng hợp theo bé từ đầu ngày đến hiện tại, không lấy 24 giờ lùi lại.
+  Tab Nhật ký mặc định cùng ngày hôm nay; chọn ngày khác hiện “Tổng hợp ngày DD/MM/YYYY” và số liệu ngày đó.
+  Chọn ngày cũ trong Nhật ký không ảnh hưởng ngày và số liệu của tab Hôm nay.
+  Ranh giới ngày theo timezone gia đình; ngủ/bú mẹ qua nửa đêm chỉ cộng thời lượng trong ngày đó,
+  gồm timer đang chạy nhưng không vượt quá hiện tại. Bộ lọc hoạt động chỉ lọc danh sách, không đổi tổng hợp ngày.
 - Tạo/nhận mã mời caregiver; token chỉ ở bộ nhớ UI, không vào IndexedDB hoặc URL.
 - PWA cache giao diện để mở lại khi mất mạng; xuất/khôi phục sao lưu JSON trong màn Gia đình.
 
+## Chăm con
+
+- Thứ tự tab: **Hôm nay → Nhật ký → Chăm con → Gia đình**. Thanh ghi nhanh vẫn dùng như trước.
+- **Chăm con** gom bú mẹ, bình sữa, thay tã, ngủ, ăn uống, lịch thuốc, chiều cao/cân nặng,
+  tắm, tummy time (nằm sấp), ngoài trời, trong nhà và đánh răng. Mọi ghi nhận thuộc bé đang chọn.
+- Ăn uống lưu món/đồ uống và lượng dùng tùy chọn; số đo dùng cm/kg (nhập một hoặc cả hai);
+  hoạt động có thời điểm và thời lượng tùy chọn. Sửa/xóa từ Nhật ký, xóa có Hoàn tác.
+- Lịch thuốc lưu từng lần, trạng thái Dự kiến / Đã uống. Dự kiến xếp tăng dần, đã uống
+  xếp giảm dần. Khi chuyển sang Đã uống phải xác nhận thời điểm thực tế, cập nhật cùng ID.
+  Kế hoạch không tính là hoạt động đã làm; lần đã uống xuất hiện trong Nhật ký.
+- Không gợi ý thuốc/liều dùng, không có nhắc tự động hay lịch lặp. Liều do gia đình nhập theo đơn.
+- Các mục mới dùng cùng cơ chế lưu offline, outbox, kiểm tra xung đột và sao lưu JSON.
+- **Triển khai:** áp dụng các migration còn thiếu theo thứ tự, đến
+  `supabase/migrations/202609050007_care_events.sql`, trước frontend. Chưa tự áp dụng lên cloud.
+  Đóng tab/PWA cũ rồi mở lại; client cũ không đọc được bốn loại event mới.
+
 ## Lịch tiêm chủng
 
-- Trong **Gia đình → Lịch tiêm chủng**, xem lịch của bé đang chọn; đổi bé ở đầu trang.
+- Trong **Chăm con → Lịch tiêm chủng**, xem lịch của bé đang chọn; đổi bé ở đầu trang.
 - **Lên lịch tiêm** để nhập lịch dự kiến, hoặc **Ghi mũi đã tiêm** để ghi bù lịch sử.
   Nhập tên vắc-xin, ngày/giờ theo múi giờ gia đình; mũi số, nơi tiêm và ghi chú tùy chọn.
 - Lịch dự kiến xếp ngày tăng dần, lịch đã tiêm xếp ngày giảm dần. Lịch qua ngày hẹn vẫn

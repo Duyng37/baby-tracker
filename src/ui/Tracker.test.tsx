@@ -10,10 +10,11 @@ let busy = false;
 let message = '';
 let familyScreen = false;
 let journalScreen = false;
+let careScreen = false;
 // SSR contract tests can inspect Family without needing a browser or changing app defaults.
 vi.mock('react', async original => {
   const react = await original<typeof import('react')>();
-  return { ...react, useState: (initial: unknown) => react.useState(initial === 'today' ? (familyScreen ? 'family' : journalScreen ? 'journal' : initial) : initial) };
+  return { ...react, useState: (initial: unknown) => react.useState(initial === 'today' ? (familyScreen ? 'family' : journalScreen ? 'journal' : careScreen ? 'care' : initial) : initial) };
 });
 vi.mock('../data/useStore', () => ({ useStore: () => current }));
 vi.mock('../sync/useSync', () => ({ useSync: () => ({ online, busy, message, kick: vi.fn() }) }));
@@ -28,7 +29,7 @@ const bottle: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', 
   body: { type: 'bottle', started_at: at, ended_at: null, note: 'Ghi nhận thử', deleted: false, payload: { amount_ml: 90, milk: 'formula' } } };
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T09:00:00.000Z'));
-  online = true; busy = false; message = ''; familyScreen = false; journalScreen = false;
+  online = true; busy = false; message = ''; familyScreen = false; journalScreen = false; careScreen = false;
   current = { ready: true, error: false, events: [], operations: [], lastContact: null,
     workspace: { families: [{ id: 'family', name: 'Nhà của Bông', timezone: 'Asia/Ho_Chi_Minh', sync_cursor: '0' }],
       babies: [{ id: 'baby', family_id: 'family', nickname: 'Bông', birth_date: null }],
@@ -38,11 +39,13 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 const render = () => renderToStaticMarkup(<ThemeProvider><Tracker store={store} /></ThemeProvider>);
 const syncButton = (html: string) => html.match(/<button class="icon-button sync-button"[^>]*>[\s\S]*?<\/button>/)![0];
 
-it('renders three navigation destinations, labelled quick actions and a focusable main', () => {
+it('renders four navigation destinations in order, labelled quick actions and a focusable main', () => {
   const html = render();
   expect(html).toContain('aria-label="Điều hướng chính"');
   expect(html.match(/aria-current="page"/g)).toHaveLength(1);
-  for (const label of ['Hôm nay', 'Nhật ký', 'Gia đình']) expect(html).toContain(label);
+  const nav = html.match(/<nav class="bottom-nav"[\s\S]*?<\/nav>/)![0];
+  const destinations = [...nav.matchAll(/<\/svg>([^<]+)<\/button>/g)].map(match => match[1]);
+  expect(destinations).toEqual(['Hôm nay', 'Nhật ký', 'Chăm con', 'Gia đình']);
   expect(html).not.toContain('Tổng quan</button>');
   expect(html).toContain('role="group" aria-label="Ghi nhanh cho Bông"');
   expect(html).toContain('tabindex="-1"');
@@ -65,10 +68,39 @@ it('merges the overview above the journal on the journal screen', () => {
   journalScreen = true;
   current.events = [bottle];
   const html = render();
-  expect(html).toContain('aria-label="Tổng hợp 24 giờ qua"');
+  expect(html).toContain('aria-label="Ngày hôm nay"');
+  expect(html).toContain('<h2>Ngày hôm nay</h2>');
+  expect(html).not.toContain('24 giờ qua');
   expect(html).toContain('90 <span>ml</span>');
-  expect(html.indexOf('Tổng hợp 24 giờ qua')).toBeLessThan(html.indexOf('Nhật ký · Bông'));
+  expect(html.indexOf('Ngày hôm nay')).toBeLessThan(html.indexOf('Nhật ký · Bông'));
   expect(html).toContain('7 ngày gần nhất');
+});
+it.each(['today', 'journal'])('uses the family calendar day for both totals and entries on %s', screen => {
+  journalScreen = screen === 'journal';
+  vi.setSystemTime(new Date('2026-09-05T18:30:00Z')); // September 6 in the family timezone.
+  current.events = [bottle, { ...bottle, id: 'today', body: { ...bottle.body, started_at: '2026-09-05T17:00:00Z', note: 'LOCAL_TODAY' } }];
+  const html = render();
+  expect(html).toContain('aria-label="Ngày hôm nay"');
+  expect(html).toContain('<h2>Ngày hôm nay</h2>');
+  expect(html).not.toContain('24 giờ qua');
+  expect(html).toContain('90 <span>ml</span>');
+  expect(html).toContain('LOCAL_TODAY');
+  expect(html).not.toContain('Ghi nhận thử');
+  expect(html).toContain('Tính theo múi giờ gia đình');
+});
+it('clips overnight sleep and breastfeeding totals to today while keeping the timers running', () => {
+  vi.setSystemTime(new Date('2026-09-05T18:30:00Z'));
+  const started_at = '2026-09-05T16:00:00Z'; // 23:00 yesterday, now 01:30 today.
+  current.events = [
+    { ...bottle, id: 'sleep', body: { ...bottle.body, type: 'sleep', started_at, payload: {} } },
+    { ...bottle, id: 'breast', body: { ...bottle.body, type: 'breast', started_at,
+      payload: { segments: [{ side: 'left', started_at, ended_at: null }] } } },
+  ];
+  const html = render();
+  const metrics = html.match(/<div class="stats">[\s\S]*?<\/div>/)![0];
+  expect(metrics.match(/1 giờ 30 phút/g)).toHaveLength(2);
+  expect(metrics).not.toContain('2 giờ 30 phút');
+  expect(html).toContain('Đang chạy');
 });
 it('uses renamed workspace names in the header, picker trigger and quick actions', () => {
   current.workspace.families[0].name = 'Tên gia đình mới';
@@ -183,16 +215,29 @@ it('does not spin the offline icon when connectivity is lost during sync', () =>
   expect(button).toContain('aria-busy="false"');
   expect(button).not.toContain('spinner');
 });
-it('integrates the vaccination schedule only in Family for the selected baby, including local-only caregivers', () => {
+it('moves vaccination to Care for the selected baby, including local-only caregivers', () => {
   const vaccination: LocalEvent = { ...bottle, body: { ...bottle.body, type: 'vaccination',
     payload: { vaccine: 'Vắc-xin của Bông', dose: 'Mũi 1', status: 'planned', location: '' } } };
   current.events = [vaccination, { ...vaccination, id: 'foreign', baby_id: 'sibling', body: { ...vaccination.body, note: 'FOREIGN_VACCINATION' } }];
   expect(render()).not.toContain('Lịch tiêm chủng');
-  familyScreen = true; online = false; current.workspace.memberships[0].role = 'caregiver';
+  familyScreen = true;
+  expect(render()).not.toContain('Lịch tiêm chủng');
+  familyScreen = false; careScreen = true; online = false; current.workspace.memberships[0].role = 'caregiver';
   const html = renderToStaticMarkup(<ThemeProvider><Tracker store={store} localOnly /></ThemeProvider>);
   expect(html).toContain('Lịch tiêm chủng'); expect(html).toContain('Vắc-xin của Bông');
   expect(html).not.toContain('FOREIGN_VACCINATION');
   expect(html).toContain('Lên lịch tiêm'); expect(html).toContain('Ghi mũi đã tiêm');
   const schedule = html.match(/<article[^>]*vaccination-schedule[\s\S]*?<\/article>/)![0];
   expect(schedule).not.toContain('disabled');
+});
+
+it('shows all requested care actions and scopes medication to the selected baby', () => {
+  careScreen = true;
+  const medication: LocalEvent = { ...bottle, body: { ...bottle.body, type: 'medication', payload: { name: 'Thuốc thử', dose: '', status: 'planned' } } };
+  current.events = [medication, { ...medication, id: 'foreign', baby_id: 'sibling', body: { ...medication.body, note: 'FOREIGN_MEDICATION' } }];
+  const html = render();
+  for (const label of ['Bú mẹ', 'Bình sữa', 'Thay tã', 'Ngủ', 'Lịch uống thuốc', 'Ăn uống', 'Chiều cao, cân nặng',
+    'Tắm', 'Tummy time (nằm sấp)', 'Ngoài trời (Outdoor)', 'Trong nhà (Indoor)', 'Đánh răng']) expect(html).toContain(label);
+  expect(html).toContain('<h1>Chăm con</h1>'); expect(html).toContain('Thuốc thử');
+  expect(html).not.toContain('FOREIGN_MEDICATION'); expect(html).not.toContain('<h2>Ngày hôm nay</h2>');
 });

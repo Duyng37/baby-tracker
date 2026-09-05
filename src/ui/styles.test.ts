@@ -59,24 +59,24 @@ it('avoids fixed footer offsets and retains short-screen, safe-area and reduced-
 it('wraps long baby names in summary headings instead of widening the scroll area', () => {
   expect(css).toContain('.section-heading > small { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }');
 });
-it('normalizes the native time control to the standard bounded field size', () => {
-  const temporal = css.match(/input\[type="time"\] \{([^}]+)\}/)?.[1];
-  expect(temporal).toBeDefined();
-  // 24px line height + 24px vertical padding + 2px border, like other fields.
-  expect(temporal).toContain('height: 50px');
-  expect(temporal).toContain('max-width: 100%');
-  expect(temporal).toContain('margin: 0');
-  expect(temporal).toContain('-webkit-appearance: none');
-  expect(temporal).toContain('appearance: none');
+it('shares date/time field sizing and icon trigger styles instead of using the native time widget', () => {
+  const fields = css.match(/\.date-input-text, \.time-input-text \{([^}]+)\}/)?.[1];
+  expect(fields).toContain('height: 50px'); expect(fields).toContain('padding-right: 48px');
+  expect(fields).toContain('font-variant-numeric: tabular-nums');
+  const triggers = css.match(/\.date-input-trigger, \.time-input-trigger \{([^}]+)\}/)?.[1];
+  expect(triggers).toContain('width: 44px'); expect(triggers).toContain('color: var(--soft-ink)');
+  expect(css).not.toContain('input[type="time"]');
 });
-it('normalizes WebKit date/time internals without hiding the native picker', () => {
-  const value = css.match(/input::-webkit-date-and-time-value \{([^}]+)\}/)?.[1];
-  const edit = css.match(/input::-webkit-datetime-edit \{([^}]+)\}/)?.[1];
-  expect(value).toContain('min-height: 1.5em');
-  expect(value).toContain('text-align: left');
-  expect(edit).toContain('min-width: 0');
-  expect(edit).toContain('padding: 0');
-  expect(css).not.toMatch(/::-webkit-calendar-picker-indicator\s*\{[^}]*(?:display:\s*none|opacity:\s*0)/);
+it('gives the time popup the calendar palette and shape with bounded scrolling and keyboard focus', () => {
+  const shared = css.match(/\.time-input-popover, \.date-input-calendar \{([^}]+)\}/)?.[1];
+  expect(shared).toContain('border-radius: 14px'); expect(shared).toContain('background: var(--surface)');
+  expect(shared).toContain('box-shadow: 0 8px 24px var(--shadow)');
+  expect(css).toContain('.time-input-popover { left: auto; right: 0; width: min(256px, calc(100vw - 64px)); }');
+  const options = css.match(/\.time-input-options \{([^}]+)\}/)?.[1];
+  expect(options).toContain('max-height: min(192px, 30dvh)'); expect(options).toContain('overflow-y: auto');
+  expect(options).toContain('overscroll-behavior: contain');
+  expect(css).toContain('.time-input-options button[aria-pressed="true"] { background: var(--tint); color: var(--soft-ink); }');
+  expect(css).toContain('.time-input-options button:focus-visible { outline-offset: -2px; }');
 });
 it('constrains field tracks and bottom-aligns wrapped labels while keeping narrow rows flexible', () => {
   const label = css.match(/(?:^|\n)label \{([^}]+)\}/)?.[1];

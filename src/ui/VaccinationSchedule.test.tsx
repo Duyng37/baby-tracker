@@ -61,7 +61,9 @@ it('renders required, labelled fields for a new plan without a future-date cap',
   const input = (name: string) => html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))![0];
   expect(input('vaccine')).toContain('required=""'); expect(input('vaccine')).toContain('maxLength="120"');
   expect(input('date')).toContain('type="text"'); expect(input('date')).toContain('required=""');
-  expect(input('time')).toContain('type="time"'); expect(input('time')).toContain('required=""');
+  expect(input('time')).toContain('class="time-input-text"'); expect(input('time')).toContain('required=""');
+  expect(input('time')).toContain('value=""'); expect(html).toContain('Mở bộ chọn giờ: Giờ');
+  expect(html).not.toContain('type="time"');
   expect(input('date')).not.toContain(' max=');
   expect(html).toContain('Lưu lịch dự kiến'); expect(html).not.toContain('Xóa lịch tiêm');
 });

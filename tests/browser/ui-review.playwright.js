@@ -94,7 +94,7 @@ async (hostPage) => {
     await page.setViewportSize(viewport);
     for (const appearance of ['light', 'dark']) {
       await theme(appearance);
-      for (const screen of ['Hôm nay', 'Nhật ký', 'Tổng quan', 'Gia đình']) {
+      for (const screen of ['Hôm nay', 'Nhật ký', 'Chăm con', 'Gia đình']) {
         await nav(screen);
         const valid = await page.evaluate(() => {
           const main = document.querySelector('main.content').getBoundingClientRect(), footer = document.querySelector('.footer').getBoundingClientRect();
@@ -217,17 +217,29 @@ async (hostPage) => {
   await page.getByRole('dialog').waitFor({ state: 'detached' });
   check(await page.getByRole('button', { name: 'Đổi tên bé Mít mới', exact: true }).isVisible(), 'sibling rename refreshes profile');
 
-  // Record a complete overnight sleep once, then a running sleep with wake fields left blank.
+  // Record a complete overnight sleep once, then a running sleep without enabling wake fields.
   await page.getByRole('button', { name: 'Đổi bé, đang chọn Bông', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Mít mới', exact: true }).click();
   await nav('Hôm nay'); await quick('Ngủ').click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Ngày', { exact: true }).fill('2026-09-04');
-  await dialog.getByLabel('Giờ', { exact: true }).fill('22:00');
+  await dialog.getByLabel('Chọn ngày ghi nhận', { exact: true }).fill('04/09/2026');
+  await dialog.getByLabel('Giờ', { exact: true }).fill('2137');
+  check(await dialog.getByLabel('Giờ', { exact: true }).inputValue() === '21:37', 'four digits normalize to HH:mm');
+  await dialog.getByRole('button', { name: 'Mở bộ chọn giờ: Giờ', exact: true }).click();
+  const clockPopup = page.getByRole('dialog', { name: 'Giờ', exact: true });
+  await clockPopup.getByRole('button', { name: '22 giờ', exact: true }).click();
+  await clockPopup.getByRole('button', { name: '00 phút', exact: true }).click();
+  await clockPopup.getByRole('button', { name: 'Xong', exact: true }).click();
+  check(await dialog.getByLabel('Giờ', { exact: true }).inputValue() === '22:00', 'themed picker commits hour and minute');
+  await dialog.getByRole('button', { name: 'Mở bộ chọn giờ: Giờ', exact: true }).click();
+  await page.keyboard.press('Escape');
+  check(await clockPopup.count() === 0 && await dialog.isVisible(), 'Escape closes the clock, not the recording sheet');
+  await dialog.getByLabel('Trạng thái giấc ngủ', { exact: true }).selectOption('awake');
+  await dialog.getByLabel('Chọn ngày thức giấc', { exact: true }).fill('04/09/2026');
   await dialog.getByLabel('Giờ thức giấc', { exact: true }).fill('06:00');
   await page.getByRole('button', { name: 'Lưu giấc ngủ', exact: true }).click();
   check(await dialog.getByRole('alert').isVisible(), 'backwards wake time requires an explicit next day');
-  await dialog.getByLabel('Ngày thức giấc', { exact: true }).fill('2026-09-05');
+  await dialog.getByLabel('Chọn ngày thức giấc', { exact: true }).fill('05/09/2026');
   await tick(); await page.getByRole('button', { name: 'Lưu giấc ngủ', exact: true }).click();
   await dialog.waitFor({ state: 'detached' });
   const sleepBodies = () => page.evaluate(async user => {
@@ -240,9 +252,12 @@ async (hostPage) => {
   check(completed.length === 1 && completed[0].started_at === '2026-09-04T15:00:00.000Z' && completed[0].ended_at === '2026-09-04T23:00:00.000Z', 'completed sleep persists both timestamps in one entry');
   check(await quick('Ngủ').isVisible(), 'completed backfill does not start a timer');
   await quick('Ngủ').click(); await tick();
+  check(await dialog.getByLabel('Giờ thức giấc', { exact: true }).isDisabled(), 'wake fields require explicit completed sleep selection');
+  check((await dialog.getByLabel('Chọn ngày thức giấc', { exact: true }).inputValue()).length > 0, 'wake date is prefilled');
+  check((await dialog.getByLabel('Giờ thức giấc', { exact: true }).inputValue()).length > 0, 'wake time is prefilled');
   await page.getByRole('button', { name: 'Lưu giấc ngủ', exact: true }).click();
   await dialog.waitFor({ state: 'detached' });
-  check((await sleepBodies()).filter(body => body.ended_at === null).length === 1, 'blank wake fields create an active sleep');
+  check((await sleepBodies()).filter(body => body.ended_at === null).length === 1, 'disabled prefilled wake fields keep sleep active');
   await quick('Đã thức').click(); await tick();
   await dialog.getByRole('button', { name: 'Đã thức', exact: true }).click();
   await dialog.waitFor({ state: 'detached' });
@@ -254,7 +269,7 @@ async (hostPage) => {
   workspace.babies[0].nickname = 'B'.repeat(80); await saveWorkspace();
   await page.waitForFunction(() => document.querySelector('.baby-info strong').textContent.length === 80);
   await page.setViewportSize({ width: 320, height: 568 });
-  for (const screen of ['Hôm nay', 'Nhật ký', 'Tổng quan', 'Gia đình']) {
+  for (const screen of ['Hôm nay', 'Nhật ký', 'Chăm con', 'Gia đình']) {
     await nav(screen);
     check(await page.evaluate(() => document.querySelector('.content').scrollWidth <= document.querySelector('.content').clientWidth), '80-character name wraps in ' + screen);
   }
