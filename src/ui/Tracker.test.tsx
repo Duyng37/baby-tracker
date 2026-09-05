@@ -1,0 +1,84 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import type { LocalStore } from '../data/store';
+import type { StoreView } from '../data/useStore';
+import type { LocalEvent } from '../domain/types';
+
+let current: StoreView;
+let online = true;
+vi.mock('../data/useStore', () => ({ useStore: () => current }));
+vi.mock('../sync/useSync', () => ({ useSync: () => ({ online, busy: false, message: '', kick: vi.fn() }) }));
+vi.mock('../cloud/supabase', () => ({ signOut: vi.fn(), authenticatedTransport: vi.fn() }));
+import { Tracker } from './Tracker';
+import { ThemeProvider } from './theme';
+
+const store = { db: { userId: 'test-owner' } } as LocalStore;
+const at = '2026-09-05T08:00:00.000Z';
+const bottle: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', server: null, version: 1,
+  body: { type: 'bottle', started_at: at, ended_at: null, note: 'Ghi nhận thử', deleted: false, payload: { amount_ml: 90, milk: 'formula' } } };
+beforeEach(() => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T09:00:00.000Z'));
+  online = true;
+  current = { ready: true, error: false, events: [], operations: [], lastContact: null,
+    workspace: { families: [{ id: 'family', name: 'Nhà của Bông', timezone: 'Asia/Ho_Chi_Minh', sync_cursor: '0' }],
+      babies: [{ id: 'baby', family_id: 'family', nickname: 'Bông', birth_date: null }],
+      memberships: [{ family_id: 'family', user_id: 'test-owner', role: 'owner' }] } };
+});
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+const render = () => renderToStaticMarkup(<ThemeProvider><Tracker store={store} /></ThemeProvider>);
+
+it('renders four navigation destinations, labelled quick actions and a focusable main', () => {
+  const html = render();
+  expect(html).toContain('aria-label="Điều hướng chính"');
+  expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+  for (const label of ['Hôm nay', 'Nhật ký', 'Tổng quan', 'Gia đình']) expect(html).toContain(label);
+  expect(html).toContain('role="group" aria-label="Ghi nhanh cho Bông"');
+  expect(html).toContain('tabindex="-1"');
+  expect(html).toContain('aria-label="Đổi bé, đang chọn Bông"');
+  expect(html).toContain('Một khoảng trống nhỏ');
+});
+it('renders the dark-mode toggle consistently with a saved device preference', () => {
+  vi.stubGlobal('window', { localStorage: { getItem: () => 'dark' }, matchMedia: () => ({ matches: false }) });
+  expect(render()).toContain('aria-label="Bật chế độ sáng"');
+});
+it('shows only the selected baby journal/metrics and escapes user content', () => {
+  current.events = [bottle, { ...bottle, id: 'foreign', baby_id: 'another-baby', body: { ...bottle.body, note: 'OTHER_BABY_NOTE' } }];
+  current.workspace.babies[0].nickname = '<script>test</script>';
+  const html = render();
+  expect(html).toContain('Ghi nhận thử');
+  expect(html).not.toContain('OTHER_BABY_NOTE');
+  expect(html).toContain('90 <span>ml</span>');
+  expect(html).not.toContain('<script>');
+});
+it('describes the action correctly when breastfeeding/sleep timers are active', () => {
+  current.events = [{ ...bottle, id: 'sleep', body: { ...bottle.body, type: 'sleep', payload: {} } },
+    { ...bottle, id: 'breast', body: { ...bottle.body, type: 'breast', payload: { segments: [{ side: 'left', started_at: at, ended_at: null }] } } }];
+  const html = render();
+  expect(html).toContain('Kết thúc bú');
+  expect(html).toContain('Đã thức');
+  expect(html.match(/data-running="true"/g)).toHaveLength(2);
+  expect(html).toContain('Đang chạy');
+  expect(html).toContain('bên trái');
+});
+it('keeps offline state truthful while leaving local quick actions available', () => {
+  online = false;
+  const html = render();
+  expect(html).toContain('data-offline="true"');
+  expect(html).toContain('Offline · ghi trên máy vẫn hoạt động');
+  expect(html).not.toMatch(/class="quick-button"[^>]*disabled/);
+  expect(html).not.toContain('Đã đồng bộ');
+});
+it('keeps onboarding separate from quick recording when there is no baby', () => {
+  current.workspace = { families: [], babies: [], memberships: [] };
+  const html = render();
+  expect(html).toContain('Gia đình của bạn');
+  expect(html).toContain('Tên gọi của bé');
+  expect(html).not.toContain('<footer');
+});
+it('retains explicit loading and device storage error states', () => {
+  current.ready = false;
+  expect(render()).toContain('Đang mở dữ liệu trên thiết bị');
+  current.ready = true; current.error = true;
+  expect(render()).toContain('Chưa mở được bộ nhớ thiết bị');
+  expect(render()).not.toContain('<footer');
+});

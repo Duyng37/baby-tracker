@@ -46,12 +46,12 @@ export function OnlineSetup({ store, familyId, onDone }: { store: LocalStore; fa
     } finally { locked.current = false; if (!lifetime.current.signal.aborted) setBusy(false); }
   }
   return <form onSubmit={submit} className="stack">
-    <p>{familyId ? 'Thêm bé vào gia đình hiện tại.' : 'Tạo gia đình và bé đầu tiên. Mỗi gia đình có dữ liệu riêng.'} Cần mạng ở bước này.</p>
-    {!familyId && <label>Tên gia đình<input required maxLength={80} value={name} disabled={!!draft || busy || !ready} onChange={e => setName(e.target.value)} /></label>}
-    <label>Tên gọi của bé<input required maxLength={80} value={baby} disabled={!!draft || busy || !ready} onChange={e => setBaby(e.target.value)} /></label>
+    <p className="sheet-intro">{familyId ? 'Thêm bé vào gia đình hiện tại.' : 'Tạo gia đình và bé đầu tiên. Mỗi gia đình có dữ liệu riêng.'} Cần mạng ở bước này.</p>
+    {!familyId && <label>Tên gia đình<input required maxLength={80} placeholder="Ví dụ: Nhà của Bông" autoComplete="off" value={name} disabled={!!draft || busy || !ready} onChange={e => setName(e.target.value)} /></label>}
+    <label>Tên gọi của bé<input required maxLength={80} placeholder="Tên thân thương của con" autoComplete="off" value={baby} disabled={!!draft || busy || !ready} onChange={e => setBaby(e.target.value)} /></label>
     {!familyId && <small>Múi giờ ban đầu: Việt Nam (Asia/Ho_Chi_Minh).</small>}
     {draft && <small>Đang giữ nguyên nội dung lần gửi trước để thử lại an toàn.</small>}
-    {message && <p role="alert">{message}</p>}
+    {message && <p className="form-error" role="alert">{message}</p>}
     <button className="primary" disabled={busy || !ready}>{busy ? 'Đang tạo…' : draft ? 'Thử lại hồ sơ này' : 'Tạo hồ sơ'}</button>
   </form>;
 }

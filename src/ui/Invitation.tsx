@@ -28,13 +28,13 @@ export function Invitation({ store, familyId, onDone }: { store: LocalStore; fam
     } finally { lock.current = false; if (!controller.current.signal.aborted) setBusy(false); }
   }
   return <div className="stack">
-    <p>Mã mời cấp quyền người chăm sóc, dùng một lần trong 48 giờ. Chỉ chia sẻ riêng với người bạn muốn mời; không gửi qua chat với trợ lý.</p>
+    <p className="sheet-intro">Mã mời cấp quyền người chăm sóc, dùng một lần trong 48 giờ. Chỉ chia sẻ riêng với người bạn muốn mời; không gửi qua chat với trợ lý.</p>
     {familyId ? token ? <label>Mã mời — chỉ hiển thị lần này<textarea readOnly value={token} spellCheck={false} /></label>
-      : <button className="primary" disabled={busy} onClick={submit}>Tạo mã mời</button>
+      : <button className="primary" disabled={busy} onClick={submit}>{busy ? 'Đang tạo mã…' : 'Tạo mã mời'}</button>
       : <form className="stack" onSubmit={e => { e.preventDefault(); void submit(); }}>
-        <label>Mã được người thân gửi<input type="password" autoComplete="off" required value={token} onChange={e => setToken(e.target.value)} /></label>
-        <button className="primary" disabled={busy}>Tham gia gia đình</button>
+        <label>Mã được người thân gửi<input type="password" autoComplete="off" placeholder="Nhập mã mời của bạn" required disabled={busy} value={token} onChange={e => setToken(e.target.value)} /></label>
+        <button className="primary" disabled={busy}>{busy ? 'Đang xác nhận…' : 'Tham gia gia đình'}</button>
       </form>}
-    {message && <p role="alert">{message}</p>}
+    {message && <p className="form-error" role="alert">{message}</p>}
   </div>;
 }

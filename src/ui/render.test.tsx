@@ -13,4 +13,7 @@ it('sheets have an accessible title and escape user content', () => {
   const html = renderToStaticMarkup(<Sheet title="Ghi cho bé" onClose={() => {}}><p>{'<script>alert(1)</script>'}</p></Sheet>);
   expect(html).toContain('aria-labelledby'); expect(html).toContain('aria-label="Đóng"');
   expect(html).not.toContain('<script>');
+  expect(html).toContain('class="sheet-handle" aria-hidden="true"');
+  expect(html).toContain('tabindex="-1"');
+  expect(html).toContain('class="sheet-content"');
 });

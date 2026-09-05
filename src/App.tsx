@@ -1,10 +1,13 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { authEvents, configured, signIn } from './cloud/supabase';
 import { watchSession } from './cloud/session-watch';
+import { Icon } from './ui/Icon';
+import { useTheme } from './ui/theme';
 
 const Account = lazy(() => import('./Account'));
 
 export function App() {
+  const { theme, toggleTheme } = useTheme();
   const [userId, setUserId] = useState<string | null>(null);
   const [ready, setReady] = useState(!configured);
   const [sessionKnown, setSessionKnown] = useState(false);
@@ -31,12 +34,15 @@ export function App() {
     <p role="status">{message}</p><p>Ứng dụng sẽ tự thử lại, chưa cần đăng nhập lại Google.</p>
     <button onClick={() => authEvents.dispatchEvent(new Event('recheck'))}>Thử khôi phục phiên</button></main>;
   if (userId) return <Suspense fallback={<main className="welcome">Đang mở nhật ký…</main>}><Account key={userId} userId={userId} /></Suspense>;
-  return <main className="welcome"><span className="brand">nôi.</span><span className="eyebrow">NHỮNG NGÀY ĐẦU, BÊN CON</span>
-    <h1>Ít thao tác hơn.<br />Thêm thời gian bên con.</h1><p>Nhật ký bú, ngủ và thay tã. Cả gia đình cùng chăm sóc, mỗi bé một không gian riêng.</p>
+  return <main className="welcome"><div className="welcome-top"><span className="brand"><span className="brand-mark" aria-hidden="true">n</span>nôi.</span>
+    <button className="icon-button theme-button" aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /></button></div>
+    <span className="eyebrow">NHỮNG NGÀY ĐẦU, BÊN CON</span>
+    <h1>Ít thao tác hơn.<br />Thêm thời gian <span>bên con.</span></h1><p>Nhật ký bú, ngủ và thay tã. Cả gia đình cùng chăm sóc, mỗi bé một không gian riêng.</p>
+    <div className="welcome-features"><span><Icon name="check" /> Ghi nhanh, nhẹ nhàng</span><span><Icon name="family" /> Cùng người thân</span></div>
     <button className="primary" disabled={signingIn} onClick={() => { setSigningIn(true); void signIn().catch(() => {
       setSigningIn(false); setMessage('Chưa đăng nhập được. Kiểm tra mạng và cấu hình máy chủ/Google OAuth.');
     }); }}>{signingIn ? 'Đang chuyển đến Google…' : 'Tiếp tục với Google'}</button>
-    {message && <><p role="alert">{message}</p><button onClick={() => authEvents.dispatchEvent(new Event('recheck'))}>Thử khôi phục phiên</button></>}
+    {message && <><p className="form-error" role="alert">{message}</p><button onClick={() => authEvents.dispatchEvent(new Event('recheck'))}>Thử khôi phục phiên</button></>}
     <p className="muted">Phiên được quản lý bằng cookie bảo mật. Bản thử nghiệm còn cần kiểm thử iPhone thực tế và hoàn thiện mở lại khi offline; chưa dùng dữ liệu bé thật.</p>
   </main>;
 }
