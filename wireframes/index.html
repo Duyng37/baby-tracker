@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f3ef">
+  <meta name="description" content="Wireframe tương tác Baby Tracker: Hôm nay, Nhật ký, Tổng quan và Gia đình.">
+  <title>Nôi — Baby Tracker · Wireframe</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#screen-content">Đi đến giao diện ứng dụng</a>
+  <div class="studio">
+    <aside class="design-panel" aria-label="Ghi chú thiết kế">
+      <a class="brand" href="./index.html" aria-label="Nôi — về đầu bản mẫu">
+        <span class="brand-mark" aria-hidden="true">n</span><span>nôi<span class="brand-dot">.</span></span>
+      </a>
+      <div class="eyebrow">BABY TRACKER / WIREFRAME 02</div>
+      <h1>Ít thao tác hơn.<br>Thêm thời gian<br><span>bên con.</span></h1>
+      <p class="intro">Bản thiết kế mobile-first cho những ngày đầu làm cha mẹ. Một tay cũng có thể ghi lại điều quan trọng.</p>
+      <div class="principles"><span>01–02 chạm</span><span>Cloud + offline</span><span>Nhiều gia đình · nhiều bé</span></div>
+      <nav class="screen-map" aria-label="Chọn màn hình wireframe">
+        <button type="button" data-action="navigate" data-screen="today" class="map-item active"><span class="map-number">01</span><span><strong>Hôm nay</strong><small>Trạng thái & ghi nhận nhanh</small></span><span aria-hidden="true">↗</span></button>
+        <button type="button" data-action="navigate" data-screen="journal" class="map-item"><span class="map-number">02</span><span><strong>Nhật ký</strong><small>Dòng thời gian & chỉnh sửa</small></span><span aria-hidden="true">↗</span></button>
+        <button type="button" data-action="navigate" data-screen="insights" class="map-item"><span class="map-number">03</span><span><strong>Tổng quan</strong><small>Nhìn lại, không chấm điểm</small></span><span aria-hidden="true">↗</span></button>
+        <button type="button" data-action="navigate" data-screen="family" class="map-item"><span class="map-number">04</span><span><strong>Gia đình</strong><small>Hồ sơ, chăm sóc & dữ liệu</small></span><span aria-hidden="true">↗</span></button>
+      </nav>
+      <section class="design-note" aria-labelledby="note-title">
+        <div class="eyebrow">Ý ĐỒ THIẾT KẾ</div>
+        <h2 id="note-title">Mọi điều cần biết, trong một cái nhìn.</h2>
+        <ol id="screen-notes"></ol>
+      </section>
+      <p class="scope-note">Prototype tương tác · dữ liệu giả lập.<br>Không phải PWA hoàn chỉnh, không gửi dữ liệu lên mạng.</p>
+    </aside>
+
+    <main class="preview-area" aria-label="Bản xem trước trên điện thoại">
+      <div class="preview-toolbar">
+        <span class="preview-caption"><span class="live-dot" aria-hidden="true"></span> BẢN MẪU TƯƠNG TÁC</span>
+        <span class="viewport-label">MOBILE / 414</span>
+      </div>
+      <div class="scenario-controls" role="group" aria-label="Điều khiển bản mẫu, không thuộc app thật">
+        <button type="button" data-action="onboarding">Lần đầu sử dụng</button>
+        <button type="button" data-action="toggle-offline" aria-pressed="false">Mô phỏng offline</button>
+        <button type="button" data-action="toggle-theme" aria-pressed="false">Ban đêm</button>
+        <button type="button" data-action="toggle-empty" aria-pressed="false">Chưa có dữ liệu</button>
+        <button type="button" data-action="reset">Đặt lại</button>
+      </div>
+      <section class="phone" aria-label="Ứng dụng Baby Tracker" data-theme="light">
+        <div class="phone-status" aria-hidden="true"><span id="status-clock">14:32</span><span class="island"></span><span class="status-symbols">▮▮▮ &nbsp; ▰</span></div>
+        <div class="app-header" id="app-header"></div>
+        <div class="connection-banner" id="connection-banner" hidden>Đang offline · vẫn có thể ghi nhận <span>(mô phỏng)</span></div>
+        <div class="app-scroll" id="app-scroll">
+          <div id="screen-content" tabindex="-1"></div>
+        </div>
+        <div id="quick-actions" aria-label="Ghi nhận nhanh"></div>
+        <div id="active-dock"></div>
+        <nav class="bottom-nav" aria-label="Điều hướng chính" id="bottom-nav"></nav>
+        <div class="home-indicator" aria-hidden="true"><span></span></div>
+      </section>
+      <p class="preview-footnote">Thử chạm tên bé để đổi bé/gia đình · đồng hồ từ 14:32<br>Cloud chỉ mô phỏng; tải lại trang sẽ đặt lại dữ liệu.</p>
+      <section class="flow-legend" aria-label="Các luồng ghi nhanh">
+        <span><b>1</b> Ngủ / Đã thức</span><span><b>2</b> Bú mẹ / Bình / Tã</span>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-heading"><div><span class="eyebrow" id="sheet-kicker">GHI NHẬN NHANH</span><h2 id="sheet-title"></h2></div><button type="button" class="icon-button" data-action="close-sheet" aria-label="Đóng bảng thao tác">×</button></div>
+    <p id="sheet-feedback" class="form-error" role="alert" hidden></p>
+    <div id="sheet-content"></div>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden><span id="toast-message"></span><button type="button" data-action="undo" hidden>Hoàn tác</button><button type="button" data-action="dismiss-toast" aria-label="Đóng thông báo">×</button></div>
+  <noscript><p class="noscript">Bật JavaScript để xem 4 màn hình và thử các tương tác của bản wireframe.</p></noscript>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
