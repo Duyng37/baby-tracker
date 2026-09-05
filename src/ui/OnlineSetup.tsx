@@ -4,7 +4,7 @@ import type { LocalStore } from '../data/store';
 import { CloudError } from '../sync/engine';
 
 type Draft = { name: string; baby: string; familyId: string; babyId: string };
-export function OnlineSetup({ store, familyId, onDone }: { store: LocalStore; familyId?: string; onDone: () => void }) {
+export function OnlineSetup({ store, familyId, onDone }: { store: LocalStore; familyId?: string; onDone: (message: string) => void }) {
   const [name, setName] = useState('');
   const [baby, setBaby] = useState('');
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -40,7 +40,7 @@ export function OnlineSetup({ store, familyId, onDone }: { store: LocalStore; fa
         p_name: value.name, p_nickname: value.baby, p_timezone: 'Asia/Ho_Chi_Minh' }, signal);
       const workspace = await api.workspace(signal); signal.throwIfAborted();
       await store.saveWorkspace(workspace);
-      await store.db.state.delete(key); onDone();
+      await store.db.state.delete(key); onDone(familyId ? 'Đã thêm bé.' : 'Đã tạo gia đình.');
     } catch (error) {
       if (!lifetime.current.signal.aborted) setMessage(error instanceof CloudError ? error.message : 'Chưa hoàn tất. Thử lại sẽ dùng đúng hồ sơ đã gửi, không tạo trùng.');
     } finally { locked.current = false; if (!lifetime.current.signal.aborted) setBusy(false); }

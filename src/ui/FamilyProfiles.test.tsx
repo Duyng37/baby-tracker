@@ -13,7 +13,7 @@ const render = (owner = true, canEdit = true) => renderToStaticMarkup(
   <FamilyProfiles family={family} babies={babies} owner={owner} canEdit={canEdit} memberCount={2} onRename={() => {}} />);
 it('offers rename actions for the family and each scoped baby, including siblings', () => {
   const html = render();
-  expect(html).toContain('Đổi tên gia đình');
+  expect(html).toMatch(/<button[^>]*class="icon-button profile-rename"[^>]*aria-label="Đổi tên gia đình Nhà của Bông"[^>]*><svg/);
   expect(html).toContain('aria-label="Đổi tên bé Bông"');
   expect(html).toContain('aria-label="Đổi tên bé Mít"');
   expect(html).not.toContain('FOREIGN');

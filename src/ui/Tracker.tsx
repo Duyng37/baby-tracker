@@ -26,6 +26,7 @@ import { RenameProfile } from './RenameProfile';
 import { ThemeSwitch } from './ThemeSwitch';
 import { VaccinationSchedule } from './VaccinationSchedule';
 import { VaccinationForm } from './VaccinationForm';
+import { scheduleToastDismiss } from './toast';
 import type { RenameTarget } from '../cloud/rename-profile';
 
 type Screen = 'today' | 'journal' | 'insights' | 'family';
@@ -82,6 +83,11 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     return () => { alive = false; };
   }, [store]);
   useEffect(() => { setPanel(null); setUndo(null); setNotice(''); setDate(''); }, [baby?.id]);
+  useEffect(() => {
+    if (!notice || panel) return;
+    const timer = scheduleToastDismiss(() => { setNotice(''); setUndo(null); });
+    return () => clearTimeout(timer);
+  }, [notice, panel]);
   useLayoutEffect(() => {
     // Deletion and undo remove their triggers, sometimes after the dialog has closed.
     if (!panel && focusContentAfterWrite.current) {
@@ -103,11 +109,11 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   function openVaccination(event?: LocalEvent, status?: VaccinationStatus) {
     setVaccinationStatus(status); openPanel(event ?? 'vaccination');
   }
-  async function write(action: () => Promise<void>, focusContent = false) {
+  async function write(action: () => Promise<void>, successMessage: string, focusContent = false) {
     if (writing.current || Date.now() - lastWrite.current < 350) return;
     writing.current = true; lastWrite.current = Date.now(); setSaving(true); setNotice('');
     try {
-      await action(); focusContentAfterWrite.current = focusContent;
+      await action(); setNotice(successMessage); focusContentAfterWrite.current = focusContent;
       setPanel(null); sync.kick();
     }
     catch (error) { setNotice(error instanceof DataError ? error.message : 'Chưa lưu được trên thiết bị. Không đóng app; hãy kiểm tra dung lượng/quyền lưu trữ.'); }
@@ -116,14 +122,13 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   function create(body: EventBody) {
     if (!scope) return;
     const target = { ...scope };
-    void write(async () => { await store.save(target, crypto.randomUUID(), body); setUndo(null); });
+    void write(async () => { await store.save(target, crypto.randomUUID(), body); setUndo(null); }, body.type === 'vaccination' ? 'Đã lưu lịch tiêm.' : 'Đã lưu ghi nhận.');
   }
   function change(event: LocalEvent, body: EventBody, removable = false) {
     void write(async () => {
       await saveUnchangedEvent(store, event, body);
       setUndo(removable ? { before: event, after: body } : null);
-      if (removable) setNotice('Đã xóa ghi nhận.');
-    }, removable || event.body.type === 'vaccination');
+    }, removable ? 'Đã xóa ghi nhận.' : body.type === 'vaccination' ? 'Đã cập nhật lịch tiêm.' : 'Đã cập nhật ghi nhận.', removable || event.body.type === 'vaccination');
   }
   function timer(event: LocalEvent, action: 'stop' | 'switch') {
     try { change(event, changeTimer(event.body, action)); }
@@ -135,7 +140,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     await write(async () => {
       await saveUnchangedEvent(store, { ...saved.before, body: saved.after }, saved.before.body);
       setUndo(null);
-    }, true);
+    }, 'Đã khôi phục ghi nhận.', true);
   }
   const visible = journalEvents(events, screen === 'today' ? today : date || today, timezone, screen === 'today' ? 'all' : filter);
   const summary = summarize(events, now - 86_400_000, now);
@@ -166,6 +171,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
         <span className="sr-only" role="status">{syncDetail}</span><span className="sync-tooltip" aria-hidden="true">{syncDetail}</span>
       </div><button className="icon-button theme-button" aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /></button></div>
     </header>
+    {notice && !panel && <div className="notice" role="status"><span>{notice}</span>{undo && <button disabled={saving} onClick={restore}>Hoàn tác</button>}<button className="icon-button" aria-label="Đóng thông báo" onClick={() => setNotice('')}><Icon name="close" /></button></div>}
     <main id="content" className="content" ref={content} tabIndex={-1} aria-label={screens.find(([key]) => key === screen)![1]}>
       {localOnly && <p className="banner">Đang dùng dữ liệu đã lưu trên thiết bị. Ghi nhận mới vẫn được giữ trên máy; đồng bộ và quản lý gia đình chờ xác thực lại. Quyền truy cập cloud có thể đã thay đổi.</p>}
       {sync.message && <p className="banner" role="status">{sync.message}</p>}
@@ -197,7 +203,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
           {screen === 'family' && <section className="stack"><article className="card stack">
             {family && <FamilyProfiles family={family} babies={view.workspace.babies} owner={own} memberCount={view.workspace.memberships.filter(m => m.family_id === family.id).length}
               canEdit={!localOnly && sync.online} onRename={target => { setRenameTarget(target); openPanel('rename'); }} />}
-            {own && <div className="row"><button disabled={localOnly} onClick={() => openPanel('new-baby')}><Icon name="plus" />Thêm bé</button><button disabled={localOnly} onClick={() => openPanel('invite')}><Icon name="family" />Mời người chăm sóc</button></div>}</article>
+            {own && <div className="family-actions"><button disabled={localOnly} onClick={() => openPanel('new-baby')}><Icon name="plus" />Thêm bé</button><button disabled={localOnly} onClick={() => openPanel('invite')}><Icon name="family" />Mời người chăm sóc</button></div>}</article>
             {scope && <VaccinationSchedule events={events} scope={scope} babyName={baby.nickname} timezone={timezone} now={now} saving={saving}
               onAdd={status => openVaccination(undefined, status)} onEdit={event => openVaccination(event)} onComplete={event => openVaccination(event, 'completed')} />}
             <div className="settings-group">
@@ -212,7 +218,6 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
           </section>}
         </>}
     </main>
-    {notice && !panel && <div className="notice" role="status"><span>{notice}</span>{undo && <button disabled={saving} onClick={restore}>Hoàn tác</button>}<button className="icon-button" aria-label="Đóng thông báo" onClick={() => setNotice('')}><Icon name="close" /></button></div>}
     {baby && <footer className="footer"><QuickActions babyName={baby.nickname} running={mine} saving={saving} onAction={openPanel} />
       <nav className="bottom-nav" aria-label="Điều hướng chính">{screens.map(([key, label]) => <button key={key} aria-current={screen === key ? 'page' : undefined} onClick={() => navigate(key)}><Icon name={key} />{label}</button>)}</nav></footer>}
     {panel && <Sheet title={typeof panel === 'object' ? panel.body.type === 'vaccination' ? 'Cập nhật lịch tiêm chủng' : 'Chi tiết ghi nhận' : isQuickPanel(panel) && quickTimer ? panel === 'sleep' ? 'Kết thúc giấc ngủ' : 'Kết thúc bú mẹ' : panelTitles[panel]} onClose={() => setPanel(null)} dismissOnBackdrop={panel === 'switch'}>
@@ -230,9 +235,9 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       {typeof panel === 'object' && panel.body.type !== 'vaccination' && <form className="stack" onSubmit={e => { e.preventDefault(); change(panel, { ...panel.body, note: String(new FormData(e.currentTarget).get('note') ?? '') }); }}><div className="card stack"><p className="sheet-intro">{labels[panel.body.type]} · {timeLabel(panel.body.started_at)}</p><p>{eventDetail(panel.body)}</p></div><label>Ghi chú<textarea name="note" maxLength={500} placeholder="Một điều nhỏ bạn muốn nhớ…" defaultValue={panel.body.note} /></label><button className="primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu trên máy'}</button><button type="button" className="danger-button" disabled={saving} onClick={() => change(panel, { ...panel.body, deleted: true }, true)}>Xóa ghi nhận</button></form>}
       {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
-        onDone={() => { setPanel(null); sync.kick(); }} />}
-      {!localOnly && (panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
-      {!localOnly && (panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
+        onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}
+      {!localOnly && (panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={message => { setPanel(null); setNotice(message); sync.kick(); }} />}
+      {!localOnly && (panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined} onDone={() => { setPanel(null); setNotice('Đã tham gia gia đình.'); sync.kick(); }} />}
       {panel === 'signout' && <div className="stack"><p>Còn {view.operations.length} thay đổi chưa được cloud xác nhận. Đăng xuất sẽ giữ bản local riêng cho tài khoản này, không xóa; chỉ mở lại khi đăng nhập đúng tài khoản.</p><p>Trên máy dùng chung, không coi cache trình duyệt là dữ liệu đã mã hóa. Chưa có chức năng dọn cache trong bản thử này.</p>
         <p>Nếu web và ứng dụng màn hình chính dùng chung phiên từ lúc cài, đăng xuất sẽ ngắt phiên của cả hai. Cần mạng để xác nhận đăng xuất.</p>
         <button className="primary" onClick={() => { void signOut().catch(() => setNotice('Chưa đăng xuất được. Vui lòng thử lại khi có mạng.')); }}>Đăng xuất, giữ dữ liệu chưa gửi</button></div>}

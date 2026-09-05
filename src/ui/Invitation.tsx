@@ -18,7 +18,7 @@ export function Invitation({ store, familyId, onDone }: { store: LocalStore; fam
       signal.throwIfAborted();
       const result = await api.rpc(familyId ? 'create_invitation' : 'accept_invitation', familyId ? { p_family_id: familyId } : { p_token: token.trim() }, signal) as Record<string, unknown>;
       signal.throwIfAborted();
-      if (familyId && typeof result.token === 'string') { setToken(result.token); return; }
+      if (familyId && typeof result.token === 'string') { setToken(result.token); setMessage('Đã tạo mã mời. Hãy sao chép và gửi riêng cho người thân.'); return; }
       setToken('');
       await store.saveWorkspace(await api.workspace(signal));
       if (result.status === 'accepted') onDone();

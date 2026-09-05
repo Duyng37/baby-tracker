@@ -56,8 +56,8 @@ it('shows a compact dd/mm/yyyy date beside the activity filter using the family 
   journalScreen = true;
   vi.setSystemTime(new Date('2026-09-05T18:30:00.000Z'));
   const html = render();
-  expect(html).toMatch(/class="journal-date-text"[^>]*type="text"[^>]*value="06\/09\/2026"/);
-  expect(html).toMatch(/type="date"[^>]*aria-label="Chọn ngày xem nhật ký"[^>]*value="2026-09-06"/);
+  expect(html).toMatch(/class="[^"]*journal-date-text"[^>]*type="text"[^>]*value="06\/09\/2026"/);
+  expect(html).toContain('aria-label="Mở lịch"');
   expect(html).toContain('<label>Hoạt động<select');
 });
 it('uses renamed workspace names in the header, picker trigger and quick actions', () => {

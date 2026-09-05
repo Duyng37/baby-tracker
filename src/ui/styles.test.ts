@@ -59,8 +59,8 @@ it('avoids fixed footer offsets and retains short-screen, safe-area and reduced-
 it('wraps long baby names in summary headings instead of widening the scroll area', () => {
   expect(css).toContain('.section-heading > small { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }');
 });
-it('normalizes native date and time controls to the same bounded field size', () => {
-  const temporal = css.match(/input\[type="date"\], input\[type="time"\] \{([^}]+)\}/)?.[1];
+it('normalizes the native time control to the standard bounded field size', () => {
+  const temporal = css.match(/input\[type="time"\] \{([^}]+)\}/)?.[1];
   expect(temporal).toBeDefined();
   // 24px line height + 24px vertical padding + 2px border, like other fields.
   expect(temporal).toContain('height: 50px');
@@ -96,15 +96,14 @@ it('keeps PWA launch colors and initial browser chrome aligned with the light ca
   expect(manifest.theme_color).toBe(canvas);
   expect(html).toContain(`<meta name="theme-color" content="${canvas}"`);
 });
-it('keeps the compact journal date and activity controls equally tall with a bounded native picker', () => {
+it('keeps the compact journal date and activity controls equally tall with a direct-selection calendar', () => {
   expect(css).toContain('.journal-filters select, .journal-date-text { height: 50px; }');
   expect(css).toContain('.journal-filters > label, .journal-date-field { flex: 1 1 150px; }');
-  const picker = css.match(/\.journal-date-picker input \{([^}]+)\}/)?.[1];
-  expect(picker).toContain('position: absolute');
-  expect(picker).toContain('width: 100%');
-  expect(picker).toContain('height: 100%');
-  expect(picker).toContain('opacity: 0');
-  expect(css).toContain('.journal-date-picker:focus-within { outline: 2px solid var(--focus)');
+  const calendar = css.match(/\.date-input-calendar \{([^}]+)\}/)?.[1];
+  expect(calendar).toContain('position: absolute');
+  expect(calendar).toContain('z-index: 3');
+  expect(calendar).toContain('width: min(304px, calc(100vw - 32px))');
+  expect(css).toContain('.date-input-days { gap: 2px; margin-top: 4px; }');
 });
 it('keeps icon-only quick actions and their expand control in one row', () => {
   expect(css).toContain('.quick-recording[data-collapsed="true"] .quick-heading { display: none; }');
@@ -112,6 +111,10 @@ it('keeps icon-only quick actions and their expand control in one row', () => {
   expect(css).toContain('.quick-toggle { grid-column: 2; grid-row: 1; }');
   expect(css).not.toContain('.quick-toggle { display: none');
   expect(css).not.toContain('.footer--compact');
+});
+it('keeps family management actions on one responsive row', () => {
+  expect(css).toContain('.family-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }');
+  expect(css).toContain('.family-actions > button { width: 100%; min-width: 0;');
 });
 it('shows a fixed-size theme switch with distinct on/off positions and forced-color support', () => {
   expect(css).toMatch(/\.theme-setting > \.switch-track \{[^}]*flex: 0 0 44px;[^}]*height: 26px/);

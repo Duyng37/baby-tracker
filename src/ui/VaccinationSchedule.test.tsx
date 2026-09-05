@@ -60,7 +60,7 @@ it('renders required, labelled fields for a new plan without a future-date cap',
   const html = renderToStaticMarkup(<VaccinationForm timezone="Asia/Ho_Chi_Minh" saving={false} onSave={() => {}} />);
   const input = (name: string) => html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))![0];
   expect(input('vaccine')).toContain('required=""'); expect(input('vaccine')).toContain('maxLength="120"');
-  expect(input('date')).toContain('type="date"'); expect(input('date')).toContain('required=""');
+  expect(input('date')).toContain('type="text"'); expect(input('date')).toContain('required=""');
   expect(input('time')).toContain('type="time"'); expect(input('time')).toContain('required=""');
   expect(input('date')).not.toContain(' max=');
   expect(html).toContain('Lưu lịch dự kiến'); expect(html).not.toContain('Xóa lịch tiêm');
@@ -71,7 +71,7 @@ it('opens completion with actual time, retains vaccine details and caps complete
     saving onSave={() => {}} onDelete={() => {}} />);
   expect(html).toContain('value="Sắp tiêm"');
   const date = html.match(/<input[^>]*name="date"[^>]*>/)![0];
-  expect(date).toContain('max="2026-09-05"'); expect(date).toContain('value="2026-09-05"');
+  expect(date).toContain('value="05/09/2026"');
   expect(html).toMatch(/name="time"[^>]*value="15:00"/);
   expect(html).toContain('Xóa lịch tiêm');
   for (const field of html.matchAll(/<(?:input|select|textarea|button)[^>]*>/g)) expect(field[0]).toContain('disabled');

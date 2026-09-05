@@ -94,28 +94,34 @@ it('filters journal entries when the compact date control selects another day', 
   expect(component(Journal).events.map(event => event.id)).toEqual(['yesterday']);
 });
 
-it.each(['online', 'offline', 'local-only'])('saves quietly in %s mode and still triggers background sync', async mode => {
+it.each(['online', 'offline', 'local-only'])('confirms a successful save in %s mode and triggers background sync', async mode => {
   online = mode === 'online'; localOnly = mode === 'local-only'; render();
   await openRecord(); await perform(() => component(QuickRecord).onSave(entry.body));
   expect(save).toHaveBeenCalledOnce(); expect(kick).toHaveBeenCalledOnce();
-  expect(feedback()).toBe('');
+  expect(feedback()).toContain('Đã lưu ghi nhận.');
   expect(elements().some(node => node.type === Sheet)).toBe(false);
 });
-it('updates a running timer without a success toast', async () => {
+it('confirms a running-timer update', async () => {
   const sleep: LocalEvent = { ...entry, body: { ...entry.body, type: 'sleep', payload: {} } };
   current.events = [sleep]; render();
   await perform(button('Đã thức'));
   expect(edit).toHaveBeenCalledWith(store, sleep, expect.objectContaining({ ended_at: expect.any(String) }));
-  expect(kick).toHaveBeenCalledOnce(); expect(feedback()).toBe('');
+  expect(kick).toHaveBeenCalledOnce(); expect(feedback()).toContain('Đã cập nhật ghi nhận.');
 });
-it('keeps an explicit deletion notice and undo, then quietly restores the record', async () => {
+it('keeps an explicit deletion notice and undo, then confirms restoration', async () => {
   await removeRecord();
   expect(edit).toHaveBeenCalledWith(store, entry, { ...entry.body, deleted: true });
   expect(feedback()).toContain('Đã xóa ghi nhận.'); expect(feedback()).toContain('Hoàn tác');
   expect(feedback()).not.toContain('cloud');
   await perform(button('Hoàn tác'));
   expect(edit).toHaveBeenLastCalledWith(store, { ...entry, body: { ...entry.body, deleted: true } }, entry.body);
-  expect(kick).toHaveBeenCalledTimes(2); expect(feedback()).toBe('');
+  expect(kick).toHaveBeenCalledTimes(2); expect(feedback()).toContain('Đã khôi phục ghi nhận.');
+});
+it('places success feedback below the header and above the main content', async () => {
+  await removeRecord();
+  const html = renderToStaticMarkup(tree);
+  expect(html.indexOf('class="notice"')).toBeGreaterThan(html.indexOf('</header>'));
+  expect(html.indexOf('class="notice"')).toBeLessThan(html.indexOf('<main'));
 });
 it.each([new Error('disk full'), new DataError('Bản ghi chưa hợp lệ.')])('preserves save errors and leaves the form open: %s', async error => {
   save.mockRejectedValueOnce(error);
@@ -137,5 +143,5 @@ it('retains the error and undo action if restoring fails, allowing a retry', asy
   expect(feedback()).toContain('Chưa lưu được trên thiết bị.'); expect(feedback()).toContain('Hoàn tác');
   expect(kick).toHaveBeenCalledOnce();
   await perform(button('Hoàn tác'));
-  expect(feedback()).toBe(''); expect(kick).toHaveBeenCalledTimes(2);
+  expect(feedback()).toContain('Đã khôi phục ghi nhận.'); expect(kick).toHaveBeenCalledTimes(2);
 });

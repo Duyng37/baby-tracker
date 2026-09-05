@@ -43,9 +43,9 @@ input::placeholder, textarea::placeholder { color: var(--secondary); opacity: .8
 input:disabled, select:disabled, textarea:disabled { background: var(--subtle); color: var(--secondary); opacity: .7; cursor: not-allowed; }
 input[readonly], textarea[readonly] { background: var(--subtle); }
 input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--danger); }
-input[type="date"], input[type="time"], input[type="number"] { font-variant-numeric: tabular-nums; }
-/* Native date/time widgets must share the standard field height, including when empty on iOS. */
-input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; height: 50px; max-width: 100%; margin: 0; }
+input[type="time"], input[type="number"] { font-variant-numeric: tabular-nums; }
+/* The remaining native time widget must share the standard field height, including when empty on iOS. */
+input[type="time"] { -webkit-appearance: none; appearance: none; height: 50px; max-width: 100%; margin: 0; }
 input::-webkit-date-and-time-value { min-height: 1.5em; text-align: left; }
 input::-webkit-datetime-edit { min-width: 0; padding: 0; }
 input:-webkit-autofill { -webkit-text-fill-color: var(--ink); box-shadow: 0 0 0 1000px var(--surface) inset; }
@@ -128,14 +128,19 @@ code { overflow-wrap: anywhere; }
 .journal-filters { padding: 14px; margin-bottom: 14px; background: var(--subtle); border-radius: 14px; }
 .journal-filters > label, .journal-date-field { flex: 1 1 150px; }
 .journal-date-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; align-self: flex-end; }
-.journal-date-control { position: relative; min-width: 0; }
 .journal-filters select, .journal-date-text { height: 50px; }
-.journal-date-text { padding-left: 10px; padding-right: 46px; font-variant-numeric: tabular-nums; }
-.journal-date-picker { position: absolute; top: 1px; right: 1px; width: 44px; height: 48px; display: grid; place-items: center; border-radius: 11px; color: var(--soft-ink); }
-.journal-date-picker:focus-within { outline: 2px solid var(--focus); outline-offset: -3px; }
-/* Only the calendar trigger uses the native input; its localized text never affects layout. */
-.journal-date-picker input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; cursor: pointer; }
-.journal-date-picker input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; }
+.date-input { position: relative; min-width: 0; }
+.date-input-control { position: relative; min-width: 0; }
+.date-input-text { padding-right: 48px; font-variant-numeric: tabular-nums; }
+.date-input-trigger { position: absolute; top: 1px; right: 1px; width: 44px; min-height: 48px; padding: 10px; color: var(--soft-ink); }
+.date-input-calendar { position: absolute; z-index: 3; top: calc(100% + 6px); left: 0; width: min(304px, calc(100vw - 32px)); padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 8px 24px var(--shadow); }
+.date-input-month { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; text-align: center; gap: 4px; font-size: .8125rem; }
+.date-input-month .icon-button { width: 40px; min-height: 40px; padding: 6px; }
+.date-input-weekdays, .date-input-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; }
+.date-input-weekdays { margin-top: 8px; color: var(--secondary); font-size: .6875rem; }
+.date-input-days { gap: 2px; margin-top: 4px; }
+.date-input-days button { min-width: 0; min-height: 36px; padding: 4px; border: 0; border-radius: 9px; background: transparent; font-size: .8125rem; }
+.date-input-days button[aria-pressed="true"] { background: var(--tint); color: var(--soft-ink); }
 .journal { list-style: none; padding: 0; margin: 0; }
 .journal li + li { border-top: 1px solid var(--line); }
 .event-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 76px; padding: 16px 4px; text-align: left; border: 0; border-radius: 10px; background: transparent; color: var(--ink); font-weight: 400; }
@@ -173,7 +178,7 @@ code { overflow-wrap: anywhere; }
 .quick-recording[data-collapsed="true"] .quick-actions { grid-column: 1; grid-row: 1; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .quick-recording[data-collapsed="true"] .quick-button { justify-content: center; min-height: 48px; padding: 10px 0; }
 .quick-recording[data-collapsed="true"] .quick-toggle .icon { transform: rotate(180deg); }
-.notice { flex: 0 0 auto; max-height: 25dvh; overflow-y: auto; margin: 0 18px 12px; background: var(--toast-bg); color: var(--toast-ink); padding: 8px 10px 8px 16px; border-radius: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: .8125rem; }
+.notice { flex: 0 0 auto; max-height: 25dvh; overflow-y: auto; margin: 12px 18px 0; background: var(--toast-bg); color: var(--toast-ink); padding: 8px 10px 8px 16px; border-radius: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: .8125rem; }
 .notice > span { flex: 1 1 160px; overflow-wrap: anywhere; }
 .notice button { padding: 8px; background: transparent; color: var(--toast-action); border-color: transparent; }
 .notice button:focus-visible { outline-color: var(--toast-action); outline-offset: -3px; }
@@ -201,9 +206,13 @@ input::file-selector-button { font: inherit; border: 1px solid var(--line); bord
 .baby-option > span:nth-child(2) { flex: 1; min-width: 0; }
 .baby-option[aria-pressed="true"] { background: var(--tint); border-color: var(--accent-line); color: var(--soft-ink); }
 .profile-card { display: flex; align-items: center; gap: 12px; }
-.profile-card > div { min-width: 0; }
+.profile-card > div { flex: 1; min-width: 0; }
+.profile-name { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.profile-name h2 { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .profile-card p { font-size: .75rem; color: var(--secondary); margin-top: 5px; }
-.profile-rename { align-self: flex-start; }
+.profile-rename { align-self: center; }
+.family-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.family-actions > button { width: 100%; min-width: 0; padding-left: 8px; padding-right: 8px; }
 .baby-list { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; }
 .baby-list li { display: flex; align-items: center; gap: 4px; max-width: 100%; border: 1px solid var(--line); background: var(--subtle); padding: 4px 8px 4px 12px; border-radius: 9px; font-size: .8125rem; overflow-wrap: anywhere; }
 .baby-list li > span { min-width: 0; }

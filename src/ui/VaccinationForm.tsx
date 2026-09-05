@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DataError } from '../domain/events';
 import { dayKey } from '../domain/summary';
 import type { VaccinationBody, VaccinationStatus } from '../domain/types';
+import { DateInput } from './DateInput';
 import { vaccinationDraft, vaccinationRecord } from './vaccination-record';
 
 export function VaccinationForm({ body, initialStatus, timezone, saving, onSave, onDelete }: {
@@ -27,8 +28,8 @@ export function VaccinationForm({ body, initialStatus, timezone, saving, onSave,
       placeholder="Nhập tên trên phiếu tiêm" onChange={event => setDraft({ ...draft, vaccine: event.target.value })} /></label>
     <label>Mũi số / nhắc lại (không bắt buộc)<input name="dose" maxLength={40} value={draft.dose} disabled={saving}
       placeholder="Ví dụ: Mũi 1" onChange={event => setDraft({ ...draft, dose: event.target.value })} /></label>
-    <div className="row"><label>{draft.status === 'planned' ? 'Ngày dự kiến' : 'Ngày đã tiêm'}<input name="date" type="date" required value={draft.date}
-      max={draft.status === 'completed' ? dayKey(Date.now(), timezone) : undefined} disabled={saving} onChange={event => setDraft({ ...draft, date: event.target.value })} /></label>
+    <div className="row"><label>{draft.status === 'planned' ? 'Ngày dự kiến' : 'Ngày đã tiêm'}<DateInput name="date" required value={draft.date}
+      max={draft.status === 'completed' ? dayKey(Date.now(), timezone) : undefined} disabled={saving} onChange={date => setDraft({ ...draft, date })} ariaLabel={draft.status === 'planned' ? 'Chọn ngày dự kiến' : 'Chọn ngày đã tiêm'} /></label>
       <label>Giờ<input name="time" type="time" required value={draft.time} disabled={saving} onChange={event => setDraft({ ...draft, time: event.target.value })} /></label></div>
     <p className="muted">Múi giờ: {timezone}. Khi chuyển sang “Đã tiêm”, hãy xác nhận lại thời điểm thực tế.</p>
     <label>Nơi tiêm (không bắt buộc)<input name="location" maxLength={160} value={draft.location} disabled={saving}

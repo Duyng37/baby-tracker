@@ -3,6 +3,7 @@ import { DataError } from '../domain/events';
 import { dayKey } from '../domain/summary';
 import type { EventBody, QuickEventType } from '../domain/types';
 import { Icon } from './Icon';
+import { DateInput } from './DateInput';
 import { quickRecord, type DiaperKind, type Milk, type QuickChoice } from './quick-record';
 
 export function QuickRecord({ type, running, timezone, saving, milk, onMilkChange, onSave }: {
@@ -23,7 +24,7 @@ export function QuickRecord({ type, running, timezone, saving, milk, onMilkChang
   return <div className="stack">
     <fieldset className="record-time" disabled={saving} aria-describedby={hint}>
       <legend>{running ? 'Thời điểm kết thúc' : type === 'sleep' ? 'Thời điểm bắt đầu ngủ' : 'Thời điểm ghi nhận'} (không bắt buộc)</legend>
-      <div className="row"><label>Ngày<input name="date" type="date" value={date} max={dayKey(Date.now(), timezone)} onChange={e => setDate(e.target.value)} /></label>
+      <div className="row"><label>Ngày<DateInput name="date" value={date} max={dayKey(Date.now(), timezone)} onChange={setDate} ariaLabel="Chọn ngày ghi nhận" /></label>
         <label>Giờ<input name="time" type="time" value={time} onChange={e => setTime(e.target.value)} /></label></div>
       <p id={hint} className="muted">Ô để trống dùng ngày/giờ hiện tại lúc lưu. Múi giờ: {timezone}.</p>
     </fieldset>
@@ -48,7 +49,7 @@ export function QuickRecord({ type, running, timezone, saving, milk, onMilkChang
       </> : <>
         <fieldset className="record-time" disabled={saving} aria-describedby={wakeHint}>
           <legend>Thời điểm thức giấc (không bắt buộc)</legend>
-          <div className="row"><label>Ngày thức giấc<input name="wakeDate" type="date" value={wakeDate} max={dayKey(Date.now(), timezone)} onChange={e => setWakeDate(e.target.value)} /></label>
+          <div className="row"><label>Ngày thức giấc<DateInput name="wakeDate" value={wakeDate} max={dayKey(Date.now(), timezone)} onChange={setWakeDate} ariaLabel="Chọn ngày thức giấc" /></label>
             <label>Giờ thức giấc<input name="wakeTime" type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)} /></label></div>
           <p id={wakeHint} className="muted">Để trống cả hai ô nếu bé vẫn đang ngủ. Nếu chỉ nhập giờ thức, dùng ngày bắt đầu ngủ; ngủ qua đêm thì chọn thêm ngày thức giấc.</p>
         </fieldset>
