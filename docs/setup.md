@@ -2,7 +2,8 @@
 
 Kiểm tra thông tin gói dịch vụ ngày **2026-09-05**. Giá/hạn mức có thể thay đổi.
 Đã có frontend React và migration; SQL tests chạy thành công trên PostgreSQL 17 local.
-Người dùng đã tạo project Supabase. Repository chưa kết nối project, chưa deploy app.
+Người dùng đã deploy frontend cũ. Bản cookie/BFF mới cần thêm migration và cấu hình
+server theo [hướng dẫn Auth/PWA](auth-pwa.md); agent chưa áp dụng lên cloud.
 
 ## 1. Có thể dùng miễn phí không?
 
@@ -58,7 +59,11 @@ Trong SQL Editor, chạy theo thứ tự:
 1. `supabase/migrations/202609050001_schema.sql`
 2. `supabase/migrations/202609050002_families.sql`
 3. `supabase/migrations/202609050003_sync.sql`
-4. `supabase/tests/backend.sql` — **chỉ project kiểm thử riêng**; fixture rollback.
+4. `supabase/migrations/202609050004_server_sessions.sql`
+
+Khuyến nghị dùng Supabase CLI để lưu lịch sử: xem `migration list`, `db push --dry-run`,
+sau khi xác nhận đúng project mới `db push`. Không push lại schema từng chạy thủ công.
+`supabase/tests/backend.sql` và `supabase/tests/server-sessions.sql` chỉ dành cho database test.
 
 Không chạy `scripts/test-auth-bootstrap.sql` trên Supabase; đó chỉ là auth fixture
 cho container PostgreSQL độc lập. Đọc kết quả test cuối; không gửi log chứa key,
@@ -69,31 +74,32 @@ cần đối chiếu/đánh dấu migration đã áp dụng, không push lại m
 
 ## 4. Đăng nhập Google — bước cần tài khoản của bạn
 
-Frontend đã có Google OAuth PKCE; cấu hình để kiểm thử:
+Server đã có Google OAuth PKCE; cấu hình để kiểm thử:
 
 1. Trong Google Cloud Console, tạo project/OAuth consent cho app và OAuth client loại Web.
 2. Trong Supabase → Authentication → Providers → Google, bật Google.
 3. Lấy **callback URL do Supabase hiển thị** và thêm chính xác vào Authorized redirect URIs của Google.
 4. Nhập Google Client ID/Client Secret trực tiếp vào Dashboard Supabase, không vào mã frontend.
 5. Nếu consent còn ở Testing, thêm email người thử vào Test users; hoàn thiện Publishing khi mở rộng.
-6. Supabase → URL Configuration: khi thử local đặt Site URL và thêm Redirect URL chính xác
-   `http://127.0.0.1:5173/`. Nếu mở bằng localhost thì thêm riêng `http://localhost:5173/`.
-   Khi deploy, đổi Site URL sang URL Vercel và thêm redirect production chính xác.
+6. Supabase → URL Configuration: local Site URL `http://127.0.0.1:5173/`, Redirect URL
+   `http://127.0.0.1:5173/api/auth?action=callback`. Nếu dùng localhost thì cấu hình riêng.
+   Production: Site URL là origin Vercel, redirect là origin + `/api/auth?action=callback`.
    Không dùng wildcard rộng hoặc tự động cho mọi preview domain.
 
 Supabase callback của Google và URL app sau đăng nhập là **hai URL khác nhau**.
-Frontend dùng PKCE, không log callback URL/query/token; không cache response Auth.
+Server dùng PKCE, không log callback URL/query/token; không cache response Auth/RPC.
 
 ## 5. Cấu hình local và Vercel
 
 Cấu hình trực tiếp trên máy, không gửi giá trị qua chat:
 
-- `VITE_SUPABASE_URL`: URL project.
-- `VITE_SUPABASE_PUBLISHABLE_KEY`: publishable key trong Project Settings → API Keys,
-  bắt đầu bằng `sb_publishable_`. Frontend không nhận legacy JWT key hay secret/service role.
+- `VITE_SUPABASE_URL`: URL project, frontend dùng để tách namespace IndexedDB.
+- Server: `APP_ORIGIN`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`,
+  `SESSION_ENCRYPTION_KEY` theo [bảng cấu hình Auth/PWA](auth-pwa.md).
 - Local: tạo `.env.local` từ `.env.example`; các file môi trường thật đã được gitignore.
 - `VITE_*` được nhúng vào bundle trình duyệt, **không phải kho secret**.
-- Không đưa database password, Google Client Secret, service-role hay Supabase secret key vào frontend/Vercel static build.
+- Không đưa secret/database password/Google Client Secret vào frontend hoặc biến `VITE_*`.
+  BFF cần Supabase secret key **server-only**; không gửi giá trị qua chat/git/log.
 
 Chạy `npm run dev`, mở `http://127.0.0.1:5173/`. Sau khi sửa `.env.local`, dừng và
 khởi động lại dev server. Không cấu hình đủ thì app chỉ hiển thị hướng dẫn, không gọi cloud.
@@ -102,7 +108,8 @@ Lần đầu đăng nhập/tạo hồ sơ/pull cần mạng. Sau đó có thể 
 **Chưa có service worker**, nên offline reload/khởi động offline chưa phải tính năng đã hoàn tất.
 
 Vercel: preset **Vite**, Root Directory để gốc repository, build `npm run build`, output `dist`.
-Đặt hai biến trên trong Vercel Environment Variables rồi build lại khi thay cấu hình.
+Đặt đủ biến frontend và server trong Vercel Environment Variables rồi redeploy.
+`api/` được triển khai thành Node Functions; `vite preview` không mô phỏng BFF production.
 Deploy Vercel **không tự chạy SQL migration**. Chưa deploy production trước khi đạt các cổng test.
 
 ## 6. Cổng kiểm thử trước khi dùng thật

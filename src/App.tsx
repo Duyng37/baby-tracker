@@ -1,42 +1,43 @@
 import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { signIn, supabase } from './cloud/supabase';
+import { authEvents, configured, signIn } from './cloud/supabase';
+import { watchSession } from './cloud/session-watch';
 
 const Account = lazy(() => import('./Account'));
 
 export function App() {
   const [userId, setUserId] = useState<string | null>(null);
-  const [ready, setReady] = useState(!supabase);
+  const [ready, setReady] = useState(!configured);
+  const [sessionKnown, setSessionKnown] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const [message, setMessage] = useState('');
   useEffect(() => {
-    if (!supabase) return;
-    let alive = true;
-    let generation = 0;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      generation++;
-      if (alive) { setUserId(session?.user.id ?? null); setReady(true); }
-    });
-    const initial = generation;
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (!alive) return;
-      if (initial === generation) setUserId(data.session?.user.id ?? null);
+    if (!configured) return;
+    const failed = new URLSearchParams(window.location.search).get('auth') === 'failed';
+    // The server consumes OAuth codes. Also remove stale legacy callback parameters.
+    if (window.location.search || window.location.hash) window.history.replaceState(null, '', window.location.pathname);
+    return watchSession(state => {
+      if (state.userId !== undefined) { setUserId(state.userId); setSessionKnown(true); }
       setReady(true);
-      if (error) setMessage('Chưa xác nhận phiên đăng nhập. Dữ liệu local chưa bị xóa.');
-      // Never leave OAuth callback credentials in browser history or logs.
-      if (window.location.search || window.location.hash) window.history.replaceState(null, '', window.location.pathname);
-    }).catch(() => { if (alive) { setReady(true); setMessage('Chưa mở được phiên đăng nhập. Vui lòng thử lại khi có mạng.'); } });
-    return () => { alive = false; subscription.unsubscribe(); };
+      setMessage(state.message || (failed && !state.userId ? 'Đăng nhập chưa hoàn tất. Hãy bắt đầu lại; nếu vẫn lỗi, kiểm tra cấu hình callback và cookie.' : ''));
+    });
   }, []);
-  if (!supabase) return <main className="welcome"><span className="brand">nôi.</span><h1>Nền ứng dụng đã sẵn sàng để kết nối.</h1>
+  if (!configured) return <main className="welcome"><span className="brand">nôi.</span><h1>Nền ứng dụng đã sẵn sàng để kết nối.</h1>
     <p>Chưa có cấu hình Supabase hợp lệ. Bản này không dùng dữ liệu demo và không giả lập thành công cloud.</p>
-    <ol><li>Tạo file <code>.env.local</code> theo <code>.env.example</code>.</li><li>Nhập URL project và publishable key trực tiếp trên máy, không qua chat.</li>
-      <li>Chạy migration, bật Google OAuth theo <code>docs/setup.md</code>, rồi khởi động lại dev server.</li></ol>
-    <p className="muted">Chỉ nhận publishable key dạng mới, không dùng service-role, secret key hoặc database password.</p></main>;
+    <ol><li>Cấu hình <code>VITE_SUPABASE_URL</code> cho frontend.</li><li>Cấu hình riêng các biến server theo <code>docs/auth-pwa.md</code>.</li>
+      <li>Chạy migration và cấu hình callback Google, rồi redeploy hoặc khởi động lại dev server.</li></ol>
+    <p className="muted">Không đưa secret key hoặc khóa mã hóa vào biến VITE_*.</p></main>;
   if (!ready) return <main className="welcome"><p>Đang mở phiên trên thiết bị…</p></main>;
+  if (!sessionKnown) return <main className="welcome"><span className="brand">nôi.</span><h1>Chưa khôi phục được phiên</h1>
+    <p role="status">{message}</p><p>Ứng dụng sẽ tự thử lại, chưa cần đăng nhập lại Google.</p>
+    <button onClick={() => authEvents.dispatchEvent(new Event('recheck'))}>Thử khôi phục phiên</button></main>;
   if (userId) return <Suspense fallback={<main className="welcome">Đang mở nhật ký…</main>}><Account key={userId} userId={userId} /></Suspense>;
   return <main className="welcome"><span className="brand">nôi.</span><span className="eyebrow">NHỮNG NGÀY ĐẦU, BÊN CON</span>
     <h1>Ít thao tác hơn.<br />Thêm thời gian bên con.</h1><p>Nhật ký bú, ngủ và thay tã. Cả gia đình cùng chăm sóc, mỗi bé một không gian riêng.</p>
-    <button className="primary" onClick={() => { void signIn().catch(() => setMessage('Chưa đăng nhập được. Kiểm tra mạng và cấu hình Google OAuth.')); }}>Tiếp tục với Google</button>
-    {message && <p role="alert">{message}</p>}<p className="muted">Lần thiết lập đầu cần mạng. Bản thử nghiệm chưa hoàn tất PWA và kiểm thử cloud thực tế; chưa dùng dữ liệu bé thật.</p>
+    <button className="primary" disabled={signingIn} onClick={() => { setSigningIn(true); void signIn().catch(() => {
+      setSigningIn(false); setMessage('Chưa đăng nhập được. Kiểm tra mạng và cấu hình máy chủ/Google OAuth.');
+    }); }}>{signingIn ? 'Đang chuyển đến Google…' : 'Tiếp tục với Google'}</button>
+    {message && <><p role="alert">{message}</p><button onClick={() => authEvents.dispatchEvent(new Event('recheck'))}>Thử khôi phục phiên</button></>}
+    <p className="muted">Phiên được quản lý bằng cookie bảo mật. Bản thử nghiệm còn cần kiểm thử iPhone thực tế và hoàn thiện mở lại khi offline; chưa dùng dữ liệu bé thật.</p>
   </main>;
 }
 

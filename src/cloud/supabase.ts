@@ -1,41 +1,54 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { CloudError, type Transport } from '../sync/engine';
 import { parsePage, parseResult, parseWorkspace } from '../sync/protocol';
 
-// Only modern browser-safe publishable keys. Never accept service-role/secret keys.
+// Only the public project origin is needed in the browser, for IndexedDB namespacing.
 function configuration() {
   const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
-  if (!url || !key || !key.startsWith('sb_publishable_')) return null;
+  if (!url) return null;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash
-      || parsed.pathname !== '/' || !parsed.hostname.endsWith('.supabase.co')) return null;
-    return { url: parsed.origin, key };
+      || parsed.port || parsed.pathname !== '/' || !parsed.hostname.endsWith('.supabase.co')) return null;
+    return { url: parsed.origin };
   } catch { return null; }
 }
 
 const config = configuration();
 export const projectId = config ? new URL(config.url).hostname : 'unconfigured';
-export const supabase = config ? createClient(config.url, config.key, {
-  auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true, autoRefreshToken: true, debug: false },
-}) : null;
+export const configured = config !== null;
+export const authEvents = new EventTarget();
 
-function failure(code: string | undefined, status: number) {
-  if (code === '40001') return new CloudError('retry');
-  if (status === 401 || code === '28000' || code === 'PGRST301') return new CloudError('auth');
-  if (status === 403 || code === '42501') return new CloudError('forbidden');
-  if (code === '22023' || status === 400) return new CloudError('invalid');
-  return new CloudError('retry');
+async function request(path: string, options: RequestInit = {}) {
+  const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(25_000)]) : AbortSignal.timeout(25_000);
+  const response = await fetch(path, { ...options, signal, credentials: 'same-origin', cache: 'no-store', redirect: 'error',
+    headers: { 'X-Noi-Client': '1', 'Content-Type': 'application/json' } });
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 409) throw new CloudError('auth');
+    if (response.status === 403) throw new CloudError('forbidden');
+    if (response.status === 400) throw new CloudError('invalid');
+    throw new CloudError('retry');
+  }
+  return response.json(); // Do not read error bodies, log URLs, or expose response headers.
+}
+export async function getSession(): Promise<string | null> {
+  if (!config) throw new CloudError('auth');
+  let data;
+  try { data = await request('/api/auth?action=session'); }
+  catch (error) { if (error instanceof CloudError && error.kind === 'auth') return null; throw error; }
+  if (data.projectId !== projectId || (data.userId !== null && typeof data.userId !== 'string')) throw new CloudError('retry');
+  return data.userId;
 }
 
 export class SupabaseTransport implements Transport {
-  constructor(readonly userId: string, private readonly client: SupabaseClient) {}
+  constructor(readonly userId: string) {}
   async rpc(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
-    const { data, error, status } = await this.client.rpc(name, args).abortSignal(signal);
-    // Do not log/propagate raw server errors, payloads, response headers or tokens.
-    if (error) throw failure(error.code, status);
-    return data;
+    try {
+      const result = await request('/api/rpc', { method: 'POST', signal, body: JSON.stringify({ name, args, userId: this.userId, projectId }) });
+      return result.data;
+    } catch (error) {
+      if (error instanceof CloudError && error.kind === 'auth') authEvents.dispatchEvent(new Event('recheck'));
+      throw error;
+    }
   }
   async workspace(signal: AbortSignal) { return parseWorkspace(await this.rpc('get_workspace', {}, signal)); }
   async apply(request: Parameters<Transport['apply']>[0], signal: AbortSignal) {
@@ -47,20 +60,19 @@ export class SupabaseTransport implements Transport {
 }
 
 export async function authenticatedTransport(userId: string): Promise<SupabaseTransport> {
-  if (!supabase || !config) throw new CloudError('auth');
-  const { data, error } = await supabase.auth.getSession();
-  const session = data.session;
-  if (error || !session || session.user.id !== userId || (session.expires_at ?? 0) * 1000 <= Date.now()) throw new CloudError('auth');
-  // Bind the token for this run. A later account switch cannot send A's outbox as B.
-  const token = session.access_token;
-  const scoped = createClient(config.url, config.key, { accessToken: async () => token });
-  return new SupabaseTransport(userId, scoped);
+  if (await getSession() !== userId) throw new CloudError('auth');
+  // The server checks this account binding again on EVERY RPC before using its JWT.
+  return new SupabaseTransport(userId);
 }
 
 export async function signIn() {
-  if (!supabase) return;
-  const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: {
-    redirectTo: `${window.location.origin}/`, scopes: 'openid email profile',
-  } });
-  if (error) throw new CloudError('auth');
+  if (!config) throw new CloudError('auth');
+  const result = await request('/api/auth?action=start', { method: 'POST' });
+  const url = new URL(result.url);
+  if (url.origin !== config.url || url.pathname !== '/auth/v1/authorize') throw new CloudError('auth');
+  window.location.assign(url.href);
+}
+export async function signOut() {
+  await request('/api/auth?action=logout', { method: 'POST' });
+  authEvents.dispatchEvent(new Event('signed-out'));
 }

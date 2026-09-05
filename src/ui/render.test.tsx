@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
-vi.mock('../cloud/supabase', () => ({ supabase: null, projectId: 'unconfigured', signIn: vi.fn() }));
+vi.mock('../cloud/supabase', () => ({ configured: false, projectId: 'unconfigured', signIn: vi.fn(), getSession: vi.fn(), authEvents: new EventTarget() }));
 import { App } from '../App';
 import { Sheet } from './Sheet';
 

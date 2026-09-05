@@ -5,8 +5,9 @@
 Một package npm ở gốc, frontend `src/`, backend `supabase/`. Không dùng npm/pnpm
 workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối chiếu thiết kế.
 
-- React + TypeScript strict + Vite; không cần server Node trên Vercel.
-- Auth Google qua Supabase PKCE, app không giữ database password/service-role.
+- React + TypeScript strict + Vite; Vercel Node Functions làm BFF cho Auth/RPC.
+- Auth Google qua Supabase PKCE phía server, phiên cookie HttpOnly; JS không nhận token mới.
+  Thiết kế, migration và env server-only: [Auth/PWA](auth-pwa.md).
 - Tạo gia đình/bé cần mạng; IDs và request nháp lưu trước network để retry an toàn.
 - Chọn bé/gia đình, ghi bình/tã/bú mẹ/ngủ; kết thúc/đổi bên timer, ghi chú, xóa/hoàn tác.
 - Tổng hợp 24 giờ gần nhất theo bé; lọc ngày nhật ký theo timezone gia đình.
@@ -23,18 +24,19 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 - Server snapshot/revision được giữ riêng với body local. ACK cũ không hạ revision;
   pull không ghi đè overlay chưa ACK. Revision/cursor giữ dạng chuỗi và so bằng BigInt.
 - Trang pull + cursor commit atomically; ACK cursor không thay pull cursor.
-- Đổi tài khoản hủy worker; RPC client giữ token đã chụp cho một lượt chạy, không theo
-  session mới của tài khoản khác. SQL/RLS vẫn là ranh giới phân quyền thật.
+- Đổi tài khoản hủy worker; mỗi RPC có expected user/project. BFF kiểm tra trước khi
+  dùng JWT người dùng; không thể gửi outbox A bằng quyền B. SQL/RLS vẫn giữ nguyên.
 - Web Locks serialize sync giữa nhiều tab; nếu không được hỗ trợ thì dừng sync và báo rõ.
 - Chạy khi mở app, online, foreground, sau ghi; kiểm tra định kỳ 30 giây. Lỗi dùng backoff
   có jitter tối đa 60 giây. Mỗi lượt gửi tối đa 100 intents, không giả ACK phần còn lại.
 - Mất membership: ẩn family, giữ dữ liệu/outbox cách ly; không tự xóa. Thông báo nêu số pending.
 - Conflict giữ cả intent local và response server, chặn intent phụ thuộc. Event khác vẫn gửi được.
-- Đăng xuất local giữ cache/outbox theo tài khoản, thông báo trước khi xác nhận; chưa có UI dọn cache.
+- Đăng xuất cần mạng, giữ cache/outbox theo tài khoản. Web/PWA sao chép cùng cookie sẽ
+  cùng mất phiên server; có thông báo trước khi xác nhận. Chưa có UI dọn cache.
 
 ## Giới hạn cần biết
 
-- **Chưa có service worker/manifest**: ghi offline khi app đang mở đã có lớp dữ liệu,
+- **Đã có manifest/icons, chưa có service worker**: ghi offline khi app đang mở đã có lớp dữ liệu,
   nhưng reload/khởi động app khi mất mạng chưa được hỗ trợ đầy đủ.
 - Phiên Auth hết hạn khi offline: chưa hoàn tất luồng mở lại cache mà không có session
   hợp lệ. Không thể coi đây là offline-first MVP đã hoàn tất.
@@ -53,7 +55,8 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 - `npm run test:client`: Vitest + fake-indexeddb kiểm tra transaction/rollback, reopen,
   account/project isolation, timer đồng thời, retry response mất, intent phụ thuộc,
   ACK cũ, conflict, scope bị thu hồi, cursor phân trang, tombstone, abort khi đổi account.
-- Transport tests chụp token dùng giá trị giả, không đọc/đưa credential thật vào test logs.
+- Transport/BFF tests dùng giá trị giả: cookie, PKCE, CSRF, refresh lease, logout-in-flight,
+  account/project binding, retry khôi phục phiên; không đọc credential thật vào test logs.
 - React tests hiện là SSR markup/accessibility/escaping, **không phải browser E2E**.
 - `npm test`: chạy cả legacy + client; `npm run test:legacy` chạy riêng 56 test wireframe/static.
 - `npm run test:db`: PostgreSQL runtime suite trong container tạm, không kết nối remote DB.

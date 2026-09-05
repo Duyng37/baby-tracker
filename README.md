@@ -12,9 +12,12 @@ thiết bị trước rồi đồng bộ Supabase; frontend React/TypeScript và
 - `scripts/test-db.mjs`: chạy SQL trên container PostgreSQL mới, độc lập với dữ liệu thật.
 - `src/`: frontend React/TypeScript, Google Auth PKCE, tạo gia đình/bé, lời mời,
   4 màn hình cơ bản, ghi nhanh và timer; IndexedDB/outbox + engine RPC.
+- `api/`, `server/`: BFF phiên cookie HttpOnly, token vault mã hóa, CSRF/account binding;
+  manifest/icons cho cài màn hình chính. [Cấu hình bản Auth/PWA mới](docs/auth-pwa.md).
 - SQL integration suite đã chạy thành công trên PostgreSQL 17 trong container riêng.
-- **Chưa có:** kết nối/kiểm thử project cloud thực, service worker/PWA offline reload,
-  màn hình giải quyết conflict, backup/restore, deploy. UI chưa được kiểm thử E2E trình duyệt.
+- Người dùng đã deploy bản frontend cũ; **chưa kiểm thử bản BFF trên cloud/iPhone thật**.
+- **Chưa có:** service worker/PWA offline reload, màn hình giải quyết conflict, backup/restore.
+  UI chưa được kiểm thử E2E trình duyệt.
 
 Chưa dùng dữ liệu bé thật cho tới khi vượt các cổng kiểm thử trong tài liệu kiến trúc.
 
@@ -24,7 +27,7 @@ Cần Node.js 22.12+; đã kiểm tra với 22.22.0. Cài dependencies bằng `n
 
 - `npm test`: chạy cả bộ legacy và client.
 - `npm run test:legacy`: các test wireframe và static guardrails cũ.
-- `npm run test:client`: domain, IndexedDB (fake-indexeddb), sync transport giả lập, render SSR.
+- `npm run test:client`: domain, IndexedDB, sync, render SSR và server cookie/HTTP/security.
 - `npm run typecheck`: TypeScript strict.
 - `npm run build`: kiểm tra kiểu và build Vite ra `dist`.
 - `npm run dev`: frontend tại `http://127.0.0.1:5173/`.
@@ -38,7 +41,7 @@ không mount workspace vào database. Container và dữ liệu test được x�
 Auth fixture chỉ mô phỏng `auth.uid()`/bảng user, không kiểm thử Google OAuth/JWT.
 
 Một lựa chọn khác: chạy `supabase/tests/backend.sql` trong **Supabase project kiểm thử riêng**,
-sau khi áp dụng đủ ba migration. Không chạy bộ fixture này trên production.
+sau khi áp dụng đủ bốn migration. Không chạy bộ fixture này trên production.
 
 ## Tài liệu
 

@@ -10,7 +10,8 @@ Không phải chứng nhận production. Đọc [setup](setup.md) trước khi �
 - Client không có INSERT/UPDATE/DELETE trực tiếp, kể cả với hàng thuộc gia đình mình.
 - RPC ghi là `SECURITY DEFINER`, cố định `search_path`, kiểm tra `auth.uid()` và membership
   trước khi thao tác. Vì definer có thể vượt RLS, các kiểm tra RPC là một lớp bảo mật bắt buộc,
-  không được bỏ chỉ vì bảng đã bật RLS. Frontend không sử dụng service-role.
+  không được bỏ chỉ vì bảng đã bật RLS. Frontend không sử dụng service-role; BFF vẫn gọi
+  10 RPC nghiệp vụ bằng JWT người dùng, có kiểm tra expected user/project trên mỗi request.
 - `private`: outbox ACK server, change log, lời mời, rate counter; không expose qua Data API.
   Chỉ helper membership được cấp execute cho authenticated để policy SELECT dùng được.
 - Chủ gia đình tạo hồ sơ/mời/thu hồi; caregiver được ghi nhật ký. Không có RPC tự nâng vai trò.
@@ -19,7 +20,7 @@ Không phải chứng nhận production. Đọc [setup](setup.md) trước khi �
 ## Các RPC
 
 Tham số và chữ ký chính xác nằm trong migration; tên dưới đây cũng là tên gọi
-`supabase.rpc(...)` khi SDK frontend được cài.
+`supabase.rpc(...)` phía BFF; frontend gọi `/api/rpc` cùng origin bằng cookie HttpOnly.
 
 | RPC | Đầu vào chính | Hành vi |
 | --- | --- | --- |

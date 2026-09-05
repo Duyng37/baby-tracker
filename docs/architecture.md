@@ -21,6 +21,7 @@
 | PWA | React + TypeScript + Vite, Workbox |
 | Bản làm việc offline | IndexedDB qua Dexie, outbox cùng transaction |
 | Tài khoản | Supabase Auth; ưu tiên Google OAuth, có thể bổ sung email OTP |
+| Phiên web/PWA | Vercel BFF, HttpOnly cookie, encrypted token vault; xem ADR 002 |
 | Cloud database | Supabase PostgreSQL, Row Level Security (RLS) |
 | Ghi dữ liệu và đồng bộ | RPC/API theo quyền người gọi, có revision và idempotency |
 | Thông báo thay đổi | Realtime để kích hoạt pull; không thay thế sync protocol |
@@ -30,6 +31,9 @@
 Người dùng đã tạo project Supabase; agent chưa áp dụng migration cloud, deploy hay bật gói trả phí.
 Workbox/service worker chưa được cài hoặc triển khai.
 Không cần microservices. Một client modular, API đồng bộ và PostgreSQL là đủ cho MVP.
+Auth/RPC đã chuyển qua BFF cùng origin, không dùng Supabase token trong JS của phiên mới.
+[ADR 002](auth-pwa.md) ghi chi tiết cookie sao chép khi cài PWA, refresh lease, giới hạn
+logout/offline và cấu hình triển khai. Manifest/icons đã có; service worker vẫn chưa có.
 
 ## 3. Quan hệ và dữ liệu
 

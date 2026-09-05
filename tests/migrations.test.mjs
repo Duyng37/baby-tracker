@@ -14,9 +14,10 @@ const rpcNames = [
   'create_family', 'add_baby', 'get_workspace', 'create_invitation', 'list_invitations',
   'revoke_invitation', 'accept_invitation', 'remove_family_member', 'apply_event', 'pull_changes',
 ];
+const vaultNames = ['bff_session_create', 'bff_session_read', 'bff_session_claim', 'bff_session_save', 'bff_session_delete'];
 
 test('static: ordered migrations are transaction-wrapped, with no destructive DDL', () => {
-  assert.equal(files.length, 3);
+  assert.equal(files.length, 4);
   for (const migration of migrations) {
     const source = migration.replace(/--[^\n]*/g, '').trim();
     assert.match(source, /^begin;/i);
@@ -28,7 +29,7 @@ test('static: ordered migrations are transaction-wrapped, with no destructive DD
 
 test('static: every application table enables RLS, no direct client writes', () => {
   const tables = [...sql.matchAll(/create table ((?:public|private)\.[a-z_]+)/g)].map(match => match[1]);
-  assert.equal(tables.length, 8);
+  assert.equal(tables.length, 9);
   for (const table of tables) assert.ok(sql.includes(`alter table ${table} enable row level security;`));
   assert.doesNotMatch(sql, /grant\s+(?:all|insert|update|delete)[^;]*to\s+(?:authenticated|anon|public)\s*;/);
   assert.doesNotMatch(sql, /create policy[^;]*for\s+(all|insert|update|delete)\b/);
@@ -39,16 +40,17 @@ test('static: every application table enables RLS, no direct client writes', () 
 
 test('static: every function fixes search_path; each public RPC has an explicit ACL', () => {
   const functions = [...sql.matchAll(/create function ([a-z_.]+)\(([\s\S]*?)\$\$;/g)];
-  assert.equal(functions.length, 14);
-  assert.deepEqual(functions.filter(([_, name]) => name.startsWith('public.')).map(([_, name]) => name.slice(7)).sort(), [...rpcNames].sort());
+  assert.equal(functions.length, 19);
+  assert.deepEqual(functions.filter(([_, name]) => name.startsWith('public.')).map(([_, name]) => name.slice(7)).sort(), [...rpcNames, ...vaultNames].sort());
   for (const [, name, definition] of functions) {
     assert.match(definition, /set search_path = ''/);
     if (!name.startsWith('public.')) continue;
     assert.match(definition, /security definer/);
-    assert.ok(definition.includes('auth.uid()') || definition.includes('private.lock_family('));
+    const vault = vaultNames.includes(name.slice(7));
+    if (!vault) assert.ok(definition.includes('auth.uid()') || definition.includes('private.lock_family('));
     const escaped = name.replaceAll('.', '\\.');
     assert.match(sql, new RegExp(`revoke all on function ${escaped}\\([^;]*\\) from public, anon, authenticated;`));
-    assert.match(sql, new RegExp(`grant execute on function ${escaped}\\([^;]*\\) to authenticated;`));
+    assert.match(sql, new RegExp(`grant execute on function ${escaped}\\([^;]*\\) to ${vault ? 'service_role' : 'authenticated'};`));
   }
 });
 

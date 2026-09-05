@@ -5,7 +5,7 @@ import { useSync } from '../sync/useSync';
 import { changeTimer, DataError, isRunning, startTimer } from '../domain/events';
 import { dayKey, duration, labels, summarize } from '../domain/summary';
 import type { EventBody, LocalEvent, Scope } from '../domain/types';
-import { supabase } from '../cloud/supabase';
+import { signOut } from '../cloud/supabase';
 import { Sheet } from './Sheet';
 import { OnlineSetup } from './OnlineSetup';
 import { Invitation } from './Invitation';
@@ -164,7 +164,8 @@ export function Tracker({ store }: { store: LocalStore }) {
       {(panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
       {(panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined} onDone={() => { setPanel(null); sync.kick(); }} />}
       {panel === 'signout' && <div className="stack"><p>Còn {view.operations.length} thay đổi chưa được cloud xác nhận. Đăng xuất sẽ giữ bản local riêng cho tài khoản này, không xóa; chỉ mở lại khi đăng nhập đúng tài khoản.</p><p>Trên máy dùng chung, không coi cache trình duyệt là dữ liệu đã mã hóa. Chưa có chức năng dọn cache trong bản thử này.</p>
-        <button className="primary" onClick={async () => { const result = await supabase!.auth.signOut({ scope: 'local' }); if (result.error) setNotice('Chưa đăng xuất được. Vui lòng thử lại.'); }}>Đăng xuất, giữ dữ liệu chưa gửi</button></div>}
+        <p>Nếu web và ứng dụng màn hình chính dùng chung phiên từ lúc cài, đăng xuất sẽ ngắt phiên của cả hai. Cần mạng để xác nhận đăng xuất.</p>
+        <button className="primary" onClick={() => { void signOut().catch(() => setNotice('Chưa đăng xuất được. Vui lòng thử lại khi có mạng.')); }}>Đăng xuất, giữ dữ liệu chưa gửi</button></div>}
       {notice && <p role="alert">{notice}</p>}
     </Sheet>}
   </div>;
