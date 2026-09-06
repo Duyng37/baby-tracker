@@ -16,6 +16,7 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
   const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState(['00', '00']);
+  const selectionRef = useRef(selection);
   const expanded = open && !disabled;
   function close(restoreFocus = false) {
     setOpen(false);
@@ -23,7 +24,8 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
   }
   function show() {
     if (disabled) return;
-    setSelection((parseTimeText(value) ?? '00:00').split(':')); setOpen(true);
+    const next = (parseTimeText(value) ?? '00:00').split(':');
+    selectionRef.current = next; setSelection(next); setOpen(true);
   }
   useEffect(() => {
     if (!expanded) return;
@@ -38,7 +40,8 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
   }, [expanded]);
   useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
   function choose(column: number, next: string) {
-    setSelection(current => current.map((part, index) => index === column ? next : part));
+    const selected = selectionRef.current.map((part, index) => index === column ? next : part);
+    selectionRef.current = selected; setSelection(selected);
   }
   function move(event: KeyboardEvent<HTMLButtonElement>, column: number, number: number, count: number) {
     const next = event.key === 'ArrowDown' ? (number + 1) % count : event.key === 'ArrowUp' ? (number + count - 1) % count
@@ -75,7 +78,7 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
         </div>
       </div>)}</div>
       <div className="time-input-actions"><button type="button" onClick={() => close(true)}>Hủy</button>
-        <button type="button" className="primary" onClick={() => { onChange(selection.join(':')); close(true); }}>Xong</button></div>
+        <button type="button" className="primary" onClick={() => { onChange(selectionRef.current.join(':')); close(true); }}>Xong</button></div>
     </div>}
   </div>;
 }

@@ -53,6 +53,13 @@ it('commits a selected time only on confirmation and restores trigger focus', ()
   click('Xong'); expect(onChange).toHaveBeenLastCalledWith('23:59'); expect(expanded()).toBe(false);
   expect(focus).toHaveBeenCalled(); expect(field().value).toBe('23:59');
 });
+it('commits the latest touch choices even before React renders them', () => {
+  click('Mở bộ chọn giờ: Giờ');
+  (button('23 giờ').onClick as () => void)();
+  (button('59 phút').onClick as () => void)();
+  (button('Xong').onClick as () => void)();
+  expect(onChange).toHaveBeenLastCalledWith('23:59');
+});
 it('cancels tentative choices and reopens from the controlled value', () => {
   click('Mở bộ chọn giờ: Giờ'); click('22 giờ'); click('Hủy');
   click('Mở bộ chọn giờ: Giờ'); expect(button('09 giờ')['aria-pressed']).toBe(true);
