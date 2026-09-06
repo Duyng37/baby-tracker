@@ -51,6 +51,8 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
     const text = String(next).padStart(2, '0'); choose(column, text);
     event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[data-value="${text}"]`)?.focus();
   }
+  // Explicit tabIndex lets WebKit focus these buttons on tap instead of the enclosing
+  // dialog, which would blur-close the popup before the button's click can run.
   return <div className="time-input" ref={root}
     onBlur={event => {
       // Mobile browsers can blur to no target when tapping a button inside the popup.
@@ -65,7 +67,7 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
       value={value} required={required} disabled={disabled} aria-label={ariaLabel} aria-invalid={!!value && !parseTimeText(value)}
       onChange={event => { const text = event.currentTarget.value; onChange(parseTimeText(text) ?? text); }}
       onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); show(); } }} />
-      <button ref={trigger} className="icon-button time-input-trigger" type="button" disabled={disabled}
+      <button ref={trigger} className="icon-button time-input-trigger" type="button" tabIndex={0} disabled={disabled}
         aria-label={`Mở bộ chọn giờ: ${ariaLabel}`} aria-haspopup="dialog" aria-expanded={expanded} aria-controls={expanded ? popupId : undefined}
         onClick={() => expanded ? close() : show()}><Icon name="clock" /></button></div>
     {expanded && <div id={popupId} className="time-input-popover" role="dialog" aria-label={ariaLabel}>
@@ -81,8 +83,8 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
           })}
         </div>
       </div>)}</div>
-      <div className="time-input-actions"><button type="button" onClick={() => close(true)}>Hủy</button>
-        <button type="button" className="primary" onClick={() => { onChange(selectionRef.current.join(':')); close(true); }}>Xong</button></div>
+      <div className="time-input-actions"><button type="button" tabIndex={0} onClick={() => close(true)}>Hủy</button>
+        <button type="button" tabIndex={0} className="primary" onClick={() => { onChange(selectionRef.current.join(':')); close(true); }}>Xong</button></div>
     </div>}
   </div>;
 }

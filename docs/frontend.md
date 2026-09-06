@@ -17,6 +17,8 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 - Bộ chọn giờ dùng cùng màu, bo góc và nút icon với bộ chọn ngày, không dùng popup giờ
   của hệ điều hành. Nhập trực tiếp `HH:mm` (hoặc 4 chữ số), hoặc chọn giờ/phút rồi bấm
   **Xong**; **Hủy**/Escape không đổi giá trị. Hỗ trợ phím mũi tên, Home/End và cả hai theme.
+  Các nút mở/đóng/xác nhận cần `tabIndex={0}` tường minh: WebKit có thể chuyển focus về
+  sheet khi chạm nút thiếu thuộc tính này, làm popup đóng trước khi `click` xác nhận chạy.
 - Ghi ngủ có ngày/giờ bắt đầu và ngày/giờ thức giấc riêng. Mặc định **Bé vẫn đang ngủ**
   để timer tiếp tục chạy, không dùng thời điểm thức điền sẵn. Chọn **Bé đã thức** để bật
   các ô thức giấc với ngày/giờ hiện tại; có thể sửa cả hai thời điểm để ghi bù giấc qua đêm.
@@ -201,6 +203,17 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
   worker trong Node VM: kiểm tra toàn bộ file được cache, offline HTML/lazy JS/CSS/icons,
   bỏ qua Auth/RPC và header cache trong cấu hình Vercel. Không dùng tài khoản/backend thật.
   `node scripts/check-client-bundle.mjs` kiểm tra marker server-secret/token không lọt vào bundle.
+
+### Hồi quy bộ chọn giờ trên WebKit cảm ứng
+
+- Chạy `node scripts/test-time-input-browser.mjs` với Playwright/WebKit đã có sẵn;
+  có thể truyền đường dẫn package Playwright làm đối số đầu nếu bộ công cụ nằm ngoài dự án.
+  Script không tự cài package hoặc trình duyệt, không thuộc lệnh `npm test` mặc định.
+- Fixture dùng `QuickRecord`, `Sheet` và CSS thật, không đọc `.env`, không có auth/database,
+  chặn request ngoài loopback. Kiểm tra thao tác `tap()` ở 375/390/430px và chuột ở desktop.
+- Tái hiện `18:37 → chọn phút 31 → Xong → 18:31`; kiểm tra Hủy, đóng bằng trigger/chạm ngoài,
+  phím Tab/mũi tên/Enter/Escape, mở lại giữ giờ mới và không bấm nhầm nút ghi sữa bên dưới.
+  Đây là WebKit mô phỏng cảm ứng; không thay thế kiểm tra cuối trên iPhone/PWA thật.
 
 ### Hồi quy UI trên Chromium với API giả
 

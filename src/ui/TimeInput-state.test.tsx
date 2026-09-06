@@ -41,10 +41,14 @@ it('opens at the existing hour and exact minute without committing, including pl
   expect(expanded()).toBe(true); expect(button('09 giờ')['aria-pressed']).toBe(true);
   expect(button('37 phút')['aria-pressed']).toBe(true);
   expect(elements().filter(node => node.type === 'button' && node.props['data-value'] !== undefined)).toHaveLength(84);
-  expect(elements().filter(node => node.props.tabIndex === 0)).toHaveLength(2);
+  expect(elements().filter(node => node.props['data-value'] !== undefined && node.props.tabIndex === 0)).toHaveLength(2);
   expect(onChange).not.toHaveBeenCalled(); click('Hủy');
   value = ''; render(); click('Mở bộ chọn giờ: Giờ'); click('Hủy');
   expect(value).toBe(''); expect(onChange).not.toHaveBeenCalled();
+});
+it('makes popup controls explicitly focusable so WebKit does not blur to the enclosing dialog before click', () => {
+  click('Mở bộ chọn giờ: Giờ');
+  for (const label of ['Mở bộ chọn giờ: Giờ', 'Hủy', 'Xong']) expect(button(label).tabIndex).toBe(0);
 });
 it('commits a selected time only on confirmation and restores trigger focus', () => {
   const focus = vi.fn(); (button('Mở bộ chọn giờ: Giờ').ref as { current: unknown }).current = { focus };
