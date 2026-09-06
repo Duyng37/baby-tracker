@@ -25,6 +25,7 @@ vi.mock('../cloud/supabase', () => ({ signOut: vi.fn(), authenticatedTransport: 
 import { Tracker } from './Tracker';
 import { ThemeProvider } from './theme';
 import { Icon } from './Icon';
+import { pendingInvitationKey } from './invitation-link';
 
 const store = { db: { userId: 'test-owner' } } as LocalStore;
 const at = '2026-09-05T08:00:00.000Z';
@@ -55,6 +56,20 @@ it('renders four navigation destinations in order, labelled quick actions and a 
   expect(html).toContain('tabindex="-1"');
   expect(html).toContain('aria-label="Đổi bé, đang chọn Bông"');
   expect(html).toContain('Một khoảng trống nhỏ');
+});
+it('opens the join sheet with a pending one-tap invitation already filled', () => {
+  const token = 'b76cdf28e2e642759ff8462855819e76ee7714bd44b741d2b24a47ced8f82ee0';
+  const values = new Map([[pendingInvitationKey, token]]);
+  vi.stubGlobal('window', {
+    sessionStorage: { getItem: (key: string) => values.get(key) ?? null, removeItem: (key: string) => values.delete(key) },
+    localStorage: { getItem: () => null }, matchMedia: () => ({ matches: false }),
+  });
+  const html = render();
+  expect(html).toMatch(/<h2[^>]*tabindex="-1"[^>]*>Tham gia gia đình<\/h2>/);
+  expect(html).toContain('Tham gia gia đình');
+  expect(html).toContain(`value="${token}"`);
+  expect(html).toContain('Mã mời đã được điền từ liên kết');
+  expect(values.has(pendingInvitationKey)).toBe(false);
 });
 it('offers installation on Today, including local-only access, and keeps a permanent Family entry after postponing', () => {
   expect(render()).toContain('aria-label="Mở Nôi nhanh hơn"');

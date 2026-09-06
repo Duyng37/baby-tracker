@@ -2,19 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { authenticatedTransport } from '../cloud/supabase';
 import type { LocalStore } from '../data/store';
 import { Icon } from './Icon';
+import { invitationShareText } from './invitation-link';
 
-export function invitationShareText(token: string, currentUrl: string) {
-  const website = new URL(currentUrl);
-  website.search = '';
-  website.hash = '';
-  return `Chăm sóc bé cùng tôi trên Nôi:\n${website.href}\n\nMã mời: ${token}`;
-}
-
-export function Invitation({ store, familyId, onDone }: { store: LocalStore; familyId?: string; onDone: () => void }) {
-  const [token, setToken] = useState('');
+export function Invitation({ store, familyId, initialToken = '', onDone }: {
+  store: LocalStore; familyId?: string; initialToken?: string; onDone: () => void;
+}) {
+  const [token, setToken] = useState(initialToken);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
-  const [copyState, setCopyState] = useState<'idle' | 'copying' | 'copied'>('idle');
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(initialToken
+    ? { text: 'Mã mời đã được điền từ liên kết. Hãy xác nhận để tham gia gia đình.', error: false } : null);
+  const [action, setAction] = useState<'idle' | 'copying' | 'copied' | 'sharing'>('idle');
   const lock = useRef(false);
   const controller = useRef(new AbortController());
   useEffect(() => { const life = new AbortController(); controller.current = life; return () => life.abort(); }, []);
@@ -39,22 +36,39 @@ export function Invitation({ store, familyId, onDone }: { store: LocalStore; fam
     } finally { lock.current = false; if (!controller.current.signal.aborted) setBusy(false); }
   }
   async function copyInvitation() {
-    setCopyState('copying');
+    setAction('copying');
     try {
       await navigator.clipboard.writeText(invitationShareText(token, window.location.href));
-      setCopyState('copied');
-      setMessage({ text: 'Đã sao chép link website và mã mời.', error: false });
+      setAction('copied');
+      setMessage({ text: 'Đã sao chép link tham gia và mã dự phòng.', error: false });
     } catch {
-      setCopyState('idle');
+      setAction('idle');
       setMessage({ text: 'Không thể sao chép tự động. Hãy kiểm tra quyền clipboard của trình duyệt rồi thử lại.', error: true });
     }
   }
+  async function shareInvitation() {
+    setAction('sharing');
+    try {
+      await navigator.share({ title: 'Lời mời chăm bé trên Nôi', text: invitationShareText(token, window.location.href) });
+      setAction('idle');
+      setMessage({ text: 'Đã chia sẻ lời mời.', error: false });
+    } catch (error) {
+      setAction('idle');
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setMessage({ text: 'Không thể mở chia sẻ trên thiết bị này. Bạn vẫn có thể sao chép link mời.', error: true });
+    }
+  }
+  const canShare = typeof navigator.share === 'function';
+  const working = action === 'copying' || action === 'sharing';
   return <div className="stack">
     <p className="sheet-intro">Mã mời cấp quyền người chăm sóc, dùng một lần trong 48 giờ. Chỉ chia sẻ riêng với người bạn muốn mời; không gửi qua chat với trợ lý.</p>
-    {familyId ? token ? <><label>Mã mời — chỉ hiển thị lần này<textarea readOnly value={token} spellCheck={false} /></label>
-      <button className="primary" disabled={copyState === 'copying'} onClick={() => { void copyInvitation(); }}>
-        <Icon name={copyState === 'copied' ? 'check' : 'copy'} />{copyState === 'copying' ? 'Đang sao chép…' : copyState === 'copied' ? 'Đã sao chép' : 'Sao chép link và mã mời'}
-      </button></>
+    {familyId ? token ? <><label>Mã mời dự phòng — chỉ hiển thị lần này<textarea readOnly value={token} spellCheck={false} /></label>
+      <div className="stack">{canShare && <button className="primary" disabled={working} onClick={() => { void shareInvitation(); }}>
+        <Icon name="share" />{action === 'sharing' ? 'Đang mở chia sẻ…' : 'Chia sẻ lời mời'}
+      </button>}
+      <button className={canShare ? '' : 'primary'} disabled={working} onClick={() => { void copyInvitation(); }}>
+        <Icon name={action === 'copied' ? 'check' : 'copy'} />{action === 'copying' ? 'Đang sao chép…' : action === 'copied' ? 'Đã sao chép' : 'Sao chép link mời'}
+      </button></div></>
       : <button className="primary" disabled={busy} onClick={submit}>{busy ? 'Đang tạo mã…' : 'Tạo mã mời'}</button>
       : <form className="stack" onSubmit={e => { e.preventDefault(); void submit(); }}>
         <label>Mã được người thân gửi<input type="password" autoComplete="off" placeholder="Nhập mã mời của bạn" required disabled={busy} value={token} onChange={e => setToken(e.target.value)} /></label>

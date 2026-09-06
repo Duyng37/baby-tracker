@@ -37,11 +37,15 @@ import { postponeInstall, promptInstall } from '../pwa/install';
 import { installLabel } from '../pwa/install-platform';
 import { InstallCard, InstallHelp, InstallSetting } from './InstallApp';
 import type { RenameTarget } from '../cloud/rename-profile';
+import { consumePendingInvitation } from './invitation-link';
 
 type Screen = 'today' | 'journal' | 'care' | 'family';
 type Panel = null | 'switch' | EventBody['type'] | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | 'install' | LocalEvent;
 function isQuickPanel(panel: Panel): panel is QuickEventType {
   return typeof panel === 'string' && ['bottle', 'diaper', 'breast', 'sleep'].includes(panel);
+}
+function browserInvitationToken() {
+  return typeof window === 'undefined' ? '' : consumePendingInvitation(window.sessionStorage);
 }
 const screens: [Screen, string][] = [['today', 'Hôm nay'], ['journal', 'Nhật ký'], ['care', 'Chăm con'], ['family', 'Gia đình']];
 const descriptions: Record<Screen, string> = {
@@ -63,7 +67,8 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   const content = useRef<HTMLElement>(null);
   const [screen, setScreen] = useState<Screen>('today');
   const [selected, setSelected] = useState('');
-  const [panel, setPanel] = useState<Panel>(null);
+  const [invitationToken, setInvitationToken] = useState(() => localOnly ? '' : browserInvitationToken());
+  const [panel, setPanel] = useState<Panel>(() => invitationToken ? 'join' : null);
   const [quickTimer, setQuickTimer] = useState<LocalEvent>();
   const [activityKind, setActivityKind] = useState<ActivityKind>('bath');
   const [vaccinationStatus, setVaccinationStatus] = useState<VaccinationStatus>();
@@ -71,6 +76,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const writing = useRef(false);
+  const invitationOpened = useRef(false);
   const focusContentAfterWrite = useRef(false);
   const lastWrite = useRef(0);
   const [undo, setUndo] = useState<{ before: LocalEvent; after: EventBody } | null>(null);
@@ -97,6 +103,11 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     return () => { alive = false; };
   }, [store]);
   useEffect(() => { setPanel(null); setUndo(null); setNotice(''); setDate(''); }, [baby?.id]);
+  useEffect(() => {
+    if (localOnly || invitationOpened.current) return;
+    const token = invitationToken || browserInvitationToken();
+    if (token) { invitationOpened.current = true; setInvitationToken(token); openPanel('join'); }
+  }, [localOnly, invitationToken]);
   useEffect(() => {
     if (!notice || panel) return;
     const timer = scheduleToastDismiss(() => { setNotice(''); setUndo(null); });
@@ -281,7 +292,8 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
         onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}
       {!localOnly && (panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={message => { setPanel(null); setNotice(message); sync.kick(); }} />}
-      {!localOnly && (panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined} onDone={() => { setPanel(null); setNotice('Đã tham gia gia đình.'); sync.kick(); }} />}
+      {!localOnly && (panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined}
+        initialToken={panel === 'join' ? invitationToken : undefined} onDone={() => { setInvitationToken(''); setPanel(null); setNotice('Đã tham gia gia đình.'); sync.kick(); }} />}
       {panel === 'signout' && <div className="stack"><p>Còn {view.operations.length} thay đổi chưa được cloud xác nhận. Đăng xuất sẽ giữ bản local riêng cho tài khoản này, không xóa; chỉ mở lại khi đăng nhập đúng tài khoản.</p><p>Trên máy dùng chung, không coi cache trình duyệt là dữ liệu đã mã hóa. Chưa có chức năng dọn cache trong bản thử này.</p>
         <p>Nếu web và ứng dụng màn hình chính dùng chung phiên từ lúc cài, đăng xuất sẽ ngắt phiên của cả hai. Cần mạng để xác nhận đăng xuất.</p>
         <button className="primary" onClick={() => { void signOut().catch(() => setNotice('Chưa đăng xuất được. Vui lòng thử lại khi có mạng.')); }}>Đăng xuất, giữ dữ liệu chưa gửi</button></div>}

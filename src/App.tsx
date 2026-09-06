@@ -8,6 +8,7 @@ import { BrandMark } from './ui/BrandMark';
 import { LoadingScreen } from './ui/LoadingScreen';
 import { Tracker } from './ui/Tracker';
 import { useTheme } from './ui/theme';
+import { capturePendingInvitation } from './ui/invitation-link';
 
 const Account = lazy(() => import('./Account'));
 
@@ -63,6 +64,8 @@ export function App() {
   const [localOnly, setLocalOnly] = useState(localBypass);
   const [candidate, setCandidate] = useState<string | null>(null);
   useEffect(() => {
+    capturePendingInvitation(window.location.href, window.sessionStorage,
+      path => window.history.replaceState(null, '', path));
     if (!configured || localBypass) return;
     const failed = new URLSearchParams(window.location.search).get('auth') === 'failed';
     // The server consumes OAuth codes. Also remove stale legacy callback parameters.
