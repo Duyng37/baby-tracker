@@ -77,13 +77,15 @@ it('renders the dark-mode toggle consistently with a saved device preference', (
   vi.stubGlobal('window', { localStorage: { getItem: () => 'dark' }, matchMedia: () => ({ matches: false }) });
   expect(render()).toContain('aria-label="Bật chế độ sáng"');
 });
-it('shows a compact dd/mm/yyyy date beside the activity filter using the family timezone', () => {
+it('shows the date filter above the overview and keeps the activity filter in the journal', () => {
   journalScreen = true;
   vi.setSystemTime(new Date('2026-09-05T18:30:00.000Z'));
   const html = render();
   expect(html).toMatch(/class="[^"]*journal-date-text"[^>]*type="text"[^>]*value="06\/09\/2026"/);
   expect(html).toContain('aria-label="Mở lịch"');
   expect(html).toContain('<label>Hoạt động<select');
+  expect(html.indexOf('journal-date-text')).toBeLessThan(html.indexOf('aria-label="Ngày hôm nay"'));
+  expect(html.indexOf('aria-label="Ngày hôm nay"')).toBeLessThan(html.indexOf('<label>Hoạt động<select'));
 });
 it('merges the overview above the journal on the journal screen', () => {
   journalScreen = true;

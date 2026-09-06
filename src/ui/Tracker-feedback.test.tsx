@@ -116,6 +116,17 @@ it('updates journal entries, totals and heading together when selecting a date',
   expect(heading()).toContain('Ngày hôm nay');
 });
 
+it('filters only journal entries when selecting an activity', async () => {
+  const diaper: LocalEvent = { ...entry, id: 'diaper', body: { ...entry.body, type: 'diaper', payload: { kind: 'wet' } } };
+  current.events = [entry, diaper]; render();
+  await perform(button('Nhật ký'));
+  const select = elements().find(node => node.type === 'select');
+  expect(select).toBeDefined();
+  await perform(() => (select!.props.onChange as (event: { target: { value: string } }) => void)({ target: { value: 'diaper' } }));
+  expect(component(Journal).events.map(event => event.id)).toEqual(['diaper']);
+  expect(component(Metrics).summary).toEqual({ bottle: 90, diapers: 1, sleep: 0, breast: 0 });
+});
+
 it('keeps Today totals and entries on today after viewing a past journal date', async () => {
   const yesterday: LocalEvent = { ...entry, id: 'yesterday', body: { ...entry.body, type: 'bottle',
     started_at: '2026-09-04T16:30:00Z', payload: { amount_ml: 120, milk: 'formula' } } };

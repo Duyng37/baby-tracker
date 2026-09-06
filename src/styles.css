@@ -136,6 +136,7 @@ code { overflow-wrap: anywhere; }
 .disclaimer .icon { width: 16px; height: 16px; margin-top: 2px; color: var(--secondary); }
 .journal-filters { padding: 14px; margin-bottom: 14px; background: var(--subtle); border-radius: 14px; }
 .journal-filters > label, .journal-date-field { flex: 1 1 150px; }
+.journal-date-filter { margin-bottom: 0; }
 .journal-date-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; align-self: flex-end; }
 .journal-filters select, .journal-date-text { height: 50px; }
 .date-input, .time-input { position: relative; min-width: 0; }

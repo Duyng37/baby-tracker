@@ -221,12 +221,15 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
             <div className="row">{event.body.type === 'breast' && <button disabled={saving} onClick={() => timer(event, 'switch')}><Icon name="swap" />Đổi bên</button>}
               <button className="primary" disabled={saving} onClick={() => timer(event, 'stop')}>{event.body.type === 'sleep' ? 'Đã thức' : 'Kết thúc'}</button></div>
           </article>)}</section>}
+          {screen === 'journal' && <section className="row journal-filters journal-date-filter" aria-label="Lọc tổng quan và nhật ký theo ngày">
+            <JournalDateInput key={baby.id} value={journalDay} onChange={setDate} />
+          </section>}
           {(screen === 'today' || screen === 'journal') && <section aria-label={summaryTitle}><div className="section-heading"><h2>{summaryTitle}</h2><small>{baby.nickname}</small></div>
             <Metrics summary={summary} />
           </section>}
           {(screen === 'today' || screen === 'journal') && <section><div className="section-heading"><h2>{screen === 'today' ? 'Nhịp hôm nay' : `Nhật ký · ${baby.nickname}`}</h2>
             {screen === 'today' ? <button className="text-button" onClick={() => navigate('journal')}>Xem nhật ký<Icon name="chevron" /></button> : <small>{visible.length} hoạt động</small>}</div>
-            {screen === 'journal' && <div className="row journal-filters"><JournalDateInput key={baby.id} value={journalDay} onChange={setDate} />
+            {screen === 'journal' && <div className="row journal-filters" aria-label="Lọc nhật ký theo hoạt động">
               <label>Hoạt động<select value={filter} onChange={e => setFilter(e.target.value)}><option value="all">Tất cả</option>{Object.entries(labels).filter(([key]) => key !== 'vaccination').map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>}
             {!visible.length && <div className="empty"><Icon name="journal" /><h3>{screen === 'journal' ? 'Chưa có hoạt động phù hợp.' : 'Một khoảng trống nhỏ, sẵn sàng để ghi.'}</h3><p>{screen === 'journal' ? 'Thử chọn ngày hoặc hoạt động khác. Khi ghi nhanh, bạn có thể chọn ngày/giờ để ghi bù.' : `Chạm một trong bốn nút bên dưới để ghi cho ${baby.nickname}.`}</p></div>}
             <Journal events={visible} timezone={timezone} onSelect={openPanel} />
