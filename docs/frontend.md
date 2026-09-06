@@ -107,9 +107,9 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 
 ## Cài PWA và mở lại khi mất mạng
 
-1. Mở app qua HTTPS, đăng nhập và đợi nhật ký đồng bộ khi có mạng. Bấm **Thêm vào màn hình chính**
-   ở thẻ **Mở Nôi nhanh hơn** trong Hôm nay hoặc trong **Gia đình** (máy tính: **Cài Nôi trên máy tính**).
-   Trình duyệt hỗ trợ sẽ mở hộp thoại cài; nếu chưa có, app hiện hướng dẫn theo thiết bị.
+1. Mở app qua HTTPS và đăng nhập. Trong tab trình duyệt, modal hướng dẫn hiện tiêu đề
+   **Thêm Nôi vào màn hình chính để mở nhanh hơn, không cần tìm lại trang web** cùng GIF hướng dẫn.
+   Thêm Nôi bằng menu trình duyệt rồi mở từ biểu tượng ứng dụng, hoặc đóng modal để dùng ngay trên trình duyệt.
 2. **Mở chính PWA vừa cài khi còn mạng** và đợi dữ liệu tải về. Cookie có thể được sao chép
    khi cài, nhưng IndexedDB/localStorage và cache của trình duyệt không được coi là đã sao chép.
 3. Vào **Gia đình → Dùng khi mất mạng**, đợi báo giao diện đã được lưu. Có thể yêu cầu
@@ -121,16 +121,22 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 
 - Service worker chỉ bật ở **production build**, không ở `npm run dev`. Cache gồm HTML,
   JS (cả lazy Account), CSS, manifest và icons; không cache Auth/RPC, callback, response riêng tư.
-- Sự kiện `beforeinstallprompt` được giữ trong bộ nhớ ngay khi khởi động, trước khi đăng nhập/tải Account.
-  Mỗi event chỉ dùng một lần, chỉ gọi `prompt()` từ thao tác người dùng. Không tự bật hộp thoại cài.
-- **Để sau** hoặc trả lời hộp thoại cài sẽ ẩn thẻ gợi ý 7 ngày; mục Gia đình vẫn dùng được.
-  Chỉ lưu mốc thời gian `noi:install-remind-after`, không lưu dữ liệu bé/phiên. Storage bị chặn vẫn dùng
-  được lựa chọn trong lần mở hiện tại. Thay đổi thời gian nhắc được nhận giữa các tab qua storage event.
-- Chỉ `appinstalled` hoặc chế độ standalone mới ẩn cả lời mời và mục cài đặt. Không coi chọn Đồng ý
-  hoặc xem hướng dẫn là đã cài; không ghi cờ “đã cài” vĩnh viễn. Tab Safari không biết chắc icon đã có.
-- Hướng dẫn phân biệt iOS/Safari, trình duyệt khác trên iOS, Android, Safari/macOS và máy tính khác;
-  trình duyệt nhúng phổ biến hướng dẫn mở bằng Safari/Chrome. Nhận diện UA chỉ chọn nội dung hướng dẫn,
-  không quyết định khả năng gọi API. iPad ở chế độ desktop nhận diện thêm qua cảm ứng.
+- Đã bỏ thẻ Hôm nay, mục cài đặt Gia đình, native prompt và lựa chọn **Để sau** của luồng cũ.
+- Nút **Đóng hướng dẫn cài Nôi** hoặc Escape đóng modal và cho dùng nhật ký trên trình duyệt;
+  chạm nền không đóng. Chỉ nhớ lựa chọn trong state của lần mở hiện tại, không ghi localStorage/sessionStorage.
+  **Tải lại trang hoặc mở trang mới sẽ hiện lại sau đăng nhập/khôi phục phiên**; đổi tab trong app,
+  đồng bộ, re-render hay chuyển focus trình duyệt không tự hiện lại.
+- Account/Tracker chỉ mount sau khi đóng modal hoặc khi đang mở app, để các form khác không che hướng dẫn.
+  Áp dụng cả khi khôi phục phiên, mở tài khoản local-only và dev bypass; chưa đăng nhập vẫn thấy màn đăng nhập.
+- `display-mode: standalone`, `window-controls-overlay` hoặc `navigator.standalone` của iOS
+  tự bỏ qua lời nhắc. Không dùng `appinstalled`, localStorage hay toàn màn hình F11 làm bằng chứng.
+  Tab trình duyệt vẫn nhắc kể cả đã cài, nhưng **luôn cho phép đóng để tiếp tục sử dụng**.
+- GIF nội bộ `public/install-guide-v1.gif`: 76 frame, nội dung 7,6 giây, thêm 2 giây giữ frame cuối
+  mỗi vòng, lặp vô hạn. Không tải từ Discord hoặc dùng timer JS để tải lại GIF. Bản tĩnh
+  `public/install-guide-still-v1.gif` dành cho thiết lập giảm chuyển động. Khi ảnh lỗi có hướng dẫn chữ.
+  Media không thuộc cache shell bắt buộc; lỗi tải media không ngăn cài service worker/dùng app offline.
+- Công cụ `scripts/install-guide.mjs` nhận đường dẫn GIF gốc, tạo hai asset mới (không ghi đè file đã có).
+  Test parser/timing/media nằm ở `tests/install-guide.test.mjs`; không cần thư viện xử lý ảnh bên ngoài.
 - HTML và assets dùng cùng một phiên bản cache. Bản mới đợi các tab/PWA cũ đóng; không ép reload
   khi người dùng đang nhập. Khi có thông báo cập nhật, đóng tất cả cửa sổ Nôi rồi mở lại.
 - Dấu nhớ tài khoản chỉ gồm user ID/thời điểm xác nhận, tách theo project, tối đa 30 ngày;

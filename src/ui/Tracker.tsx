@@ -32,15 +32,11 @@ import { CareForm } from './CareForm';
 import { isCareBody, isCareType } from './care-record';
 import { MedicationSchedule } from './MedicationSchedule';
 import { scheduleToastDismiss } from './toast';
-import { useInstall } from '../pwa/useInstall';
-import { postponeInstall, promptInstall } from '../pwa/install';
-import { installLabel } from '../pwa/install-platform';
-import { InstallCard, InstallHelp, InstallSetting } from './InstallApp';
 import type { RenameTarget } from '../cloud/rename-profile';
 import { consumePendingInvitation } from './invitation-link';
 
 type Screen = 'today' | 'journal' | 'care' | 'family';
-type Panel = null | 'switch' | EventBody['type'] | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | 'install' | LocalEvent;
+type Panel = null | 'switch' | EventBody['type'] | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | LocalEvent;
 function isQuickPanel(panel: Panel): panel is QuickEventType {
   return typeof panel === 'string' && ['bottle', 'diaper', 'breast', 'sleep'].includes(panel);
 }
@@ -54,7 +50,6 @@ const descriptions: Record<Screen, string> = {
   family: 'Cùng nhau chăm bé, sẻ chia mỗi ngày.',
 };
 const panelTitles = { switch: 'Chọn bé', bottle: 'Ghi bình sữa', diaper: 'Thay tã', breast: 'Bắt đầu bú mẹ', sleep: 'Ghi giấc ngủ',
-  install: 'Thêm Nôi vào thiết bị',
   vaccination: 'Thêm lịch tiêm chủng',
   medication: 'Lịch uống thuốc', meal: 'Ghi ăn uống', growth: 'Ghi chiều cao, cân nặng', activity: 'Ghi hoạt động',
   'new-family': 'Thêm gia đình', 'new-baby': 'Thêm bé', invite: 'Mời người chăm sóc', join: 'Tham gia gia đình', signout: 'Đăng xuất trên thiết bị', backup: 'Sao lưu và khôi phục', rename: 'Đổi tên hồ sơ' };
@@ -63,7 +58,6 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   const view = useStore(store);
   const sync = useSync(store, !localOnly);
   const { theme, toggleTheme } = useTheme();
-  const install = useInstall();
   const content = useRef<HTMLElement>(null);
   const [screen, setScreen] = useState<Screen>('today');
   const [selected, setSelected] = useState('');
@@ -131,16 +125,6 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     content.current?.scrollTo({ top: 0 });
     content.current?.focus({ preventScroll: true });
   }
-  async function installApp() {
-    const result = await promptInstall();
-    if (result === 'busy') return;
-    if (result === 'unavailable' || result === 'error') { openPanel('install'); return; }
-    setPanel(null);
-    setNotice(result === 'installed' ? 'Nôi đã được cài. Bạn có thể mở từ biểu tượng trên thiết bị.'
-      : result === 'accepted' ? 'Bạn đã đồng ý cài Nôi. Hãy chờ trình duyệt hoàn tất và tìm biểu tượng Nôi trên thiết bị.'
-      : 'Bạn có thể thêm Nôi sau trong màn Gia đình.');
-    if (screen === 'today' || document.activeElement === document.body) content.current?.focus({ preventScroll: true });
-  }
   function openVaccination(event?: LocalEvent, status?: VaccinationStatus) {
     setVaccinationStatus(status); openPanel(event ?? 'vaccination');
   }
@@ -195,9 +179,6 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
 
   if (!view.ready) return <LoadingScreen detail="Đang mở dữ liệu trên thiết bị…" />;
   if (view.error) return <main className="welcome"><h1>Chưa mở được bộ nhớ thiết bị</h1><p>Kiểm tra quyền lưu trữ hoặc dung lượng. Không xóa dữ liệu trình duyệt nếu còn thay đổi chưa gửi.</p></main>;
-  const installInvitation = <InstallCard state={install} onInstall={() => { void installApp(); }} onLater={() => {
-    postponeInstall(); content.current?.focus({ preventScroll: true });
-  }} />;
   return <div className="app">
     <a className="skip-link" href="#content">Đến nội dung</a>
     <header className="header">
@@ -233,9 +214,7 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
           </article>)}</section>}
           {(screen === 'today' || screen === 'journal') && <section aria-label={summaryTitle}><div className="section-heading"><h2>{summaryTitle}</h2><small>{baby.nickname}</small></div>
             <Metrics summary={summary} />
-            <div className="disclaimer"><Icon name="info" /><p className="muted">Tính theo múi giờ gia đình, gồm timer đang chạy; chỉ cộng thời gian trong ngày đang xem, không vượt quá hiện tại. Đây là nhật ký, không phải đánh giá sức khỏe hay hướng dẫn lượng sữa.</p></div>
           </section>}
-          {screen === 'today' && installInvitation}
           {(screen === 'today' || screen === 'journal') && <section><div className="section-heading"><h2>{screen === 'today' ? 'Nhịp hôm nay' : `Nhật ký · ${baby.nickname}`}</h2>
             {screen === 'today' ? <button className="text-button" onClick={() => navigate('journal')}>Xem nhật ký<Icon name="chevron" /></button> : <small>{visible.length} hoạt động</small>}</div>
             {screen === 'journal' && <div className="row journal-filters"><JournalDateInput key={baby.id} value={journalDay} onChange={setDate} />
@@ -259,19 +238,16 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
               <button className="setting-row" disabled={localOnly} onClick={() => openPanel('new-family')}><Icon name="plus" /><span><strong>Tạo gia đình khác</strong><small>Mỗi gia đình một không gian riêng</small></span><Icon name="chevron" /></button>
               <button className="setting-row" disabled={localOnly} onClick={() => openPanel('join')}><Icon name="family" /><span><strong>Nhận lời mời</strong><small>Cùng người thân chăm sóc bé</small></span><Icon name="chevron" /></button>
               <button className="setting-row" onClick={() => openPanel('backup')}><Icon name="journal" /><span><strong>Sao lưu và khôi phục</strong><small>Tệp riêng trên máy · không ghi đè nhật ký</small></span><Icon name="chevron" /></button>
-              <InstallSetting state={install} onInstall={() => { void installApp(); }} />
               <ThemeSwitch />
             </div>
             <div className="settings-group"><button className="setting-row danger" onClick={() => openPanel('signout')}><Icon name="logout" /><span><strong>Đăng xuất</strong><small>Giữ lại dữ liệu chưa gửi trên thiết bị</small></span><Icon name="chevron" /></button></div>
             <OfflineSettings />
-            <div className="disclaimer"><Icon name="info" /><p className="muted">Dữ liệu được lưu trên thiết bị rồi đồng bộ với Supabase. Hãy giữ bản sao lưu riêng; đồng bộ không thay thế sao lưu. Xung đột đồng bộ cần được kiểm tra, app không tự chọn phiên bản.</p></div>
           </section>}
         </>}
-      {!baby && installInvitation}
     </main>
     {baby && <footer className="footer"><QuickActions babyName={baby.nickname} running={mine} saving={saving} onAction={openPanel} />
       <nav className="bottom-nav" aria-label="Điều hướng chính">{screens.map(([key, label]) => <button key={key} aria-current={screen === key ? 'page' : undefined} onClick={() => navigate(key)}><Icon name={key} />{label}</button>)}</nav></footer>}
-    {panel && <Sheet title={panel === 'install' ? installLabel(install.platform) : typeof panel === 'object' ? panel.body.type === 'vaccination' ? 'Cập nhật lịch tiêm chủng' : 'Chi tiết ghi nhận' : isQuickPanel(panel) && quickTimer ? panel === 'sleep' ? 'Kết thúc giấc ngủ' : 'Kết thúc bú mẹ' : panelTitles[panel]} onClose={() => setPanel(null)} dismissOnBackdrop={panel === 'switch' || panel === 'install'}>
+    {panel && <Sheet title={typeof panel === 'object' ? panel.body.type === 'vaccination' ? 'Cập nhật lịch tiêm chủng' : 'Chi tiết ghi nhận' : isQuickPanel(panel) && quickTimer ? panel === 'sleep' ? 'Kết thúc giấc ngủ' : 'Kết thúc bú mẹ' : panelTitles[panel]} onClose={() => setPanel(null)} dismissOnBackdrop={panel === 'switch'}>
       {baby && (typeof panel === 'object' || isQuickPanel(panel) || panel === 'vaccination' || isCareType(panel)) && <p className="sheet-scope">{baby.nickname} · {family?.name}</p>}
       {panel === 'switch' && view.workspace.families.map(f => <section key={f.id}><h3>{f.name}</h3>{view.workspace.babies.filter(b => b.family_id === f.id).map(b => <button className="baby-option" key={b.id} onClick={() => {
         setSelected(b.id); setPanel(null); void store.db.state.put({ key: 'selectedBaby', value: b.id }).catch(() => setNotice('Chưa lưu được lựa chọn bé.'));
@@ -288,7 +264,6 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
         onSave={body => change(panel, body)} onDelete={() => change(panel, { ...panel.body, deleted: true }, true)} />}
       {typeof panel === 'object' && panel.body.type !== 'vaccination' && !isCareBody(panel.body) && <form className="stack" onSubmit={e => { e.preventDefault(); change(panel, { ...panel.body, note: String(new FormData(e.currentTarget).get('note') ?? '') }); }}><div className="card stack"><p className="sheet-intro">{labels[panel.body.type]} · {timeLabel(panel.body.started_at)}</p><p>{eventDetail(panel.body)}</p></div><label>Ghi chú<textarea name="note" maxLength={500} placeholder="Một điều nhỏ bạn muốn nhớ…" defaultValue={panel.body.note} /></label><button className="primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu trên máy'}</button><button type="button" className="danger-button" disabled={saving} onClick={() => change(panel, { ...panel.body, deleted: true }, true)}>Xóa ghi nhận</button></form>}
       {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
-      {panel === 'install' && <InstallHelp state={install} onInstall={() => { void installApp(); }} />}
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
         onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}
       {!localOnly && (panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={message => { setPanel(null); setNotice(message); sync.kick(); }} />}

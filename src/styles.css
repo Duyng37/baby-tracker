@@ -99,19 +99,18 @@ code { overflow-wrap: anywhere; }
 .record-time legend { padding: 0 4px; font-size: .8125rem; font-weight: 600; }
 .record-time .muted { margin-top: 8px; }
 .stack { display: flex; flex-direction: column; gap: 16px; }
-.install-card { display: grid; gap: 14px; border-color: var(--accent-line); }
-.install-heading { display: flex; align-items: flex-start; gap: 12px; }
-.install-heading > .icon { color: var(--soft-ink); margin-top: 2px; }
-.install-heading > div { min-width: 0; }
-.install-heading h2 { font-size: .9375rem; }
-.install-heading p { color: var(--secondary); font-size: .8125rem; margin-top: 5px; }
-.install-card .row > button:first-child { flex: 1 1 180px; background: var(--tint); color: var(--soft-ink); border-color: var(--accent-line); }
-.install-help { font-size: .875rem; overflow-wrap: anywhere; }
-.install-steps { margin: 0; padding-left: 24px; display: grid; gap: 14px; }
-.install-steps li { padding-left: 4px; }
-.install-steps li::marker { color: var(--soft-ink); font-weight: 650; }
-.install-inline { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; }
-.install-inline .icon { width: 20px; height: 20px; color: var(--soft-ink); }
+.install-gate { min-height: 100dvh; display: grid; place-items: center; background: var(--canvas); }
+.install-reminder { position: fixed; inset: 0; width: min(480px, calc(100% - 32px)); max-width: 100%; max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); margin: auto; padding: 40px 24px 24px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 24px; background: var(--canvas); color: var(--ink); box-shadow: 0 12px 60px var(--sheet-shadow); text-align: center; }
+.install-reminder::backdrop { background: var(--scrim); backdrop-filter: blur(4px); }
+.install-reminder-close { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; height: 44px; padding: 0; }
+.install-reminder-close .icon { width: 18px; height: 18px; }
+.install-reminder h1 { font-size: clamp(1.125rem, 4.5vw, 1.375rem); line-height: 1.5; letter-spacing: -.025em; margin: 0; }
+.install-reminder h1:focus { outline: none; }
+.install-reminder > p { margin-top: 18px; font-size: .8125rem; color: var(--secondary); }
+.install-guide { display: block; margin: 20px auto 0; }
+.install-guide img { display: block; width: auto; height: auto; max-width: min(100%, 188px); max-height: 48dvh; margin: auto; border: 1px solid var(--line); border-radius: 14px; }
+.install-guide-error { margin-top: 20px; padding: 16px; border-radius: 14px; background: var(--subtle); font-size: .8125rem; text-align: left; }
+.install-guide-error p + p { margin-top: 10px; }
 .primary { background: var(--primary); color: var(--primary-ink); border-color: transparent; }
 .text-button { background: transparent; border-color: transparent; color: var(--soft-ink); padding: 8px 10px; font-size: .8125rem; }
 .danger { color: var(--danger); }

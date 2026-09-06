@@ -9,6 +9,7 @@ import { LoadingScreen } from './ui/LoadingScreen';
 import { Tracker } from './ui/Tracker';
 import { useTheme } from './ui/theme';
 import { capturePendingInvitation } from './ui/invitation-link';
+import { AppWindowGate } from './ui/AppWindowGate';
 
 const Account = lazy(() => import('./Account'));
 
@@ -84,7 +85,7 @@ export function App() {
     authEvents.addEventListener('signed-out', signedOut);
     return () => authEvents.removeEventListener('signed-out', signedOut);
   }, []);
-  if (localBypass) return <LocalDevAccount />;
+  if (localBypass) return <AppWindowGate><LocalDevAccount /></AppWindowGate>;
   if (!configured) return <main className="welcome"><span className="brand">nôi.</span><h1>Nền ứng dụng đã sẵn sàng để kết nối.</h1>
     <p>Chưa có cấu hình Supabase hợp lệ. Bản này không dùng dữ liệu demo và không giả lập thành công cloud.</p>
     <ol><li>Cấu hình <code>VITE_SUPABASE_URL</code> cho frontend.</li><li>Cấu hình riêng các biến server theo <code>docs/auth-pwa.md</code>.</li>
@@ -96,7 +97,7 @@ export function App() {
     {candidate && <><p>Chỉ mở trên thiết bị riêng: dữ liệu của tài khoản đã dùng trên máy chưa được mã hóa riêng. Đây không phải xác nhận quyền truy cập cloud.</p>
       <button className="primary" onClick={() => { setUserId(candidate); setLocalOnly(true); setSessionKnown(true); }}>Mở nhật ký trên thiết bị</button></>}
     <button onClick={() => authEvents.dispatchEvent(new Event('recheck'))}>Thử khôi phục phiên</button></main>;
-  if (userId) return <Suspense fallback={<LoadingScreen detail="Đang chuẩn bị giao diện nhật ký…" />}><Account key={userId} userId={userId} localOnly={localOnly} /></Suspense>;
+  if (userId) return <AppWindowGate><Suspense fallback={<LoadingScreen detail="Đang chuẩn bị giao diện nhật ký…" />}><Account key={userId} userId={userId} localOnly={localOnly} /></Suspense></AppWindowGate>;
   return <main className="welcome"><div className="welcome-top"><span className="brand"><BrandMark />nôi.</span>
     <button className="icon-button theme-button" aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /></button></div>
     <span className="eyebrow">NHỮNG NGÀY ĐẦU, BÊN CON</span>

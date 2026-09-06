@@ -4,10 +4,11 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { runInNewContext } from 'node:vm';
+import { inspectGif } from './install-guide.mjs';
 
 const root = new URL('../dist/', import.meta.url);
 const mime = path => path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css'
-  : path.endsWith('.png') ? 'image/png' : path.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html';
+  : path.endsWith('.gif') ? 'image/gif' : path.endsWith('.png') ? 'image/png' : path.endsWith('.webmanifest') ? 'application/manifest+json' : 'text/html';
 let server;
 try {
   const files = readdirSync(root, { recursive: true }).map(path => path.replaceAll('\\', '/'));
@@ -30,7 +31,7 @@ try {
   server = createServer((request, response) => {
     const path = new URL(request.url, 'http://localhost').pathname;
     const file = path === '/' ? 'index.html' : path.slice(1);
-    if (!files.includes(file) || !/\.(js|css|html|png|webmanifest)$/.test(file)) {
+    if (!files.includes(file) || !/\.(js|css|html|png|gif|webmanifest)$/.test(file)) {
       response.writeHead(404).end(); return;
     }
     response.writeHead(200, { 'Content-Type': mime(file) });
@@ -38,6 +39,21 @@ try {
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const origin = `http://127.0.0.1:${server.address().port}`;
+  // Installation guidance is published, but must not become a prerequisite for offline shell installation.
+  for (const name of ['install-guide-v1.gif', 'install-guide-still-v1.gif']) {
+    const response = await fetch(`${origin}/${name}`);
+    assert.equal(response.status, 200); assert.equal(response.headers.get('content-type'), 'image/gif');
+    const bytes = Buffer.from(await response.arrayBuffer()), info = inspectGif(bytes);
+    assert.deepEqual(bytes, readFileSync(new URL(`../public/${name}`, import.meta.url)));
+    assert.equal(info.width, 240); assert.equal(info.height, 490);
+    if (name.includes('still')) assert.equal(info.frames.length, 1);
+    else {
+      assert.equal(info.frames.length, 76); assert.equal(info.frames.at(-1).delay, 210);
+      assert.equal(info.frames.reduce((sum, frame) => sum + frame.delay, 0), 960);
+      assert.equal(bytes.readUInt16LE(info.loops[0]), 0);
+    }
+    assert(!expected.has(`/${name}`));
+  }
   const buckets = new Map(), handlers = new Map();
   const key = value => new URL(typeof value === 'string' ? value : value.url, origin).href;
   let offline = false, networkRequests = 0, claimed = false;
@@ -90,7 +106,7 @@ try {
   const headers = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')).headers;
   assert(headers.find(rule => rule.source === '/sw.js').headers.some(header => header.key === 'Cache-Control' && header.value.includes('no-cache')));
   assert(headers.find(rule => rule.source === '/api/(.*)').headers.some(header => header.key === 'Cache-Control' && header.value.includes('no-store')));
-  console.log(`PASS: production shell (${expected.size} files) fetched via loopback HTTP; offline HTML/lazy chunks/icons match; API bypass and cache headers verified. Node VM only.`);
+  console.log(`PASS: production shell (${expected.size} files) fetched via loopback HTTP; offline HTML/lazy chunks/icons match; install GIFs and 2s pause verified; API bypass and cache headers verified. Node VM only.`);
 } catch {
   console.error('FAIL: production offline-shell check. No raw response/config/user data logged.');
   process.exitCode = 1;
