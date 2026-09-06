@@ -52,7 +52,11 @@ export function TimeInput({ id, name, value, required, disabled, onChange, ariaL
     event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[data-value="${text}"]`)?.focus();
   }
   return <div className="time-input" ref={root}
-    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) close(); }}
+    onBlur={event => {
+      // Mobile browsers can blur to no target when tapping a button inside the popup.
+      // Closing here would unmount that button before its click; outside taps use pointerdown.
+      if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) close();
+    }}
     onKeyDown={event => {
       if (event.key === 'Escape' && expanded) { event.preventDefault(); event.stopPropagation(); close(true); }
     }}>

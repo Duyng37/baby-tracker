@@ -53,7 +53,7 @@ it('commits a selected time only on confirmation and restores trigger focus', ()
   click('Xong'); expect(onChange).toHaveBeenLastCalledWith('23:59'); expect(expanded()).toBe(false);
   expect(focus).toHaveBeenCalled(); expect(field().value).toBe('23:59');
 });
-it('commits the latest touch choices even before React renders them', () => {
+it('commits pending choices even before React renders them', () => {
   click('Mở bộ chọn giờ: Giờ');
   (button('23 giờ').onClick as () => void)();
   (button('59 phút').onClick as () => void)();
@@ -89,8 +89,36 @@ it('closes without committing when focus leaves the control but not when moving 
   click('Mở bộ chọn giờ: Giờ');
   tree.props.onBlur({ currentTarget: { contains: () => true }, relatedTarget: {} } as never); render();
   expect(expanded()).toBe(true);
-  tree.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: null } as never); render();
+  tree.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: {} } as never); render();
   expect(expanded()).toBe(false); expect(onChange).not.toHaveBeenCalled();
+});
+it('keeps confirmation mounted when a mobile-style null-target blur precedes its click', () => {
+  click('Mở bộ chọn giờ: Giờ'); click('23 giờ'); click('59 phút');
+  tree.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: null } as never); render();
+  expect(expanded()).toBe(true);
+  expect(value).toBe('09:37'); expect(onChange).not.toHaveBeenCalled();
+  click('Xong');
+  expect(onChange).toHaveBeenCalledExactlyOnceWith('23:59');
+  expect(field().value).toBe('23:59'); expect(expanded()).toBe(false);
+  click('Mở bộ chọn giờ: Giờ');
+  expect(button('23 giờ')['aria-pressed']).toBe(true);
+  expect(button('59 phút')['aria-pressed']).toBe(true);
+});
+it('preserves hour/minute taps across null-target blur without committing until confirmation', () => {
+  click('Mở bộ chọn giờ: Giờ');
+  for (const label of ['06 giờ', '08 phút']) {
+    tree.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: null } as never); render();
+    expect(expanded()).toBe(true); click(label);
+  }
+  expect(value).toBe('09:37'); expect(onChange).not.toHaveBeenCalled();
+  click('Xong'); expect(field().value).toBe('06:08');
+});
+it('still cancels tentative choices after a null-target blur', () => {
+  click('Mở bộ chọn giờ: Giờ'); click('22 giờ');
+  tree.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: null } as never); render();
+  expect(expanded()).toBe(true); click('Hủy');
+  expect(expanded()).toBe(false); expect(onChange).not.toHaveBeenCalled();
+  click('Mở bộ chọn giờ: Giờ'); expect(button('09 giờ')['aria-pressed']).toBe(true);
 });
 it('preserves typed changes, normalizes four digits and propagates invalid drafts for validation', () => {
   type('1234'); expect(value).toBe('12:34'); expect(field()['aria-invalid']).toBe(false);
