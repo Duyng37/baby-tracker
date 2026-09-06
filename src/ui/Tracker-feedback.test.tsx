@@ -47,6 +47,7 @@ import { MedicationSchedule } from './MedicationSchedule';
 import { VaccinationSchedule } from './VaccinationSchedule';
 import { VaccinationForm } from './VaccinationForm';
 import { JournalEntryForm } from './JournalEntryForm';
+import { BugReport } from './BugReport';
 
 const store = { db: { userId: 'owner' }, save } as unknown as LocalStore;
 const entry: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', server: null, version: 1,
@@ -153,6 +154,15 @@ it.each(['meal', 'growth', 'medication'] as const)('opens the %s form from Care'
   await perform(button('Chăm con'));
   await perform(() => component(CareActions).onAction(type));
   expect(component(CareForm).type).toBe(type);
+});
+it('replaces creating another family with the app bug report flow', async () => {
+  await perform(button('Gia đình'));
+  const markup = renderToStaticMarkup(tree);
+  expect(markup).not.toContain('Tạo gia đình khác');
+  expect(markup).toContain('Báo lỗi app');
+  const report = elements().find(node => node.type === 'button' && renderToStaticMarkup(node).includes('Báo lỗi app'))!;
+  await perform(report.props.onClick as () => void);
+  expect(component(BugReport)).toBeDefined();
 });
 it('edits, deletes and undoes medication on the same event', async () => {
   const body = { ...entry.body, type: 'medication' as const, payload: { name: 'Thuốc thử', dose: '', status: 'planned' as const } };

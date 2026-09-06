@@ -36,9 +36,10 @@ import type { RenameTarget } from '../cloud/rename-profile';
 import { consumePendingInvitation } from './invitation-link';
 import { JournalEntryForm } from './JournalEntryForm';
 import { isQuickBody } from './journal-entry';
+import { BugReport } from './BugReport';
 
 type Screen = 'today' | 'journal' | 'care' | 'family';
-type Panel = null | 'switch' | EventBody['type'] | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | LocalEvent;
+type Panel = null | 'switch' | EventBody['type'] | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | 'bug-report' | LocalEvent;
 function isQuickPanel(panel: Panel): panel is QuickEventType {
   return typeof panel === 'string' && ['bottle', 'diaper', 'breast', 'sleep'].includes(panel);
 }
@@ -54,7 +55,7 @@ const descriptions: Record<Screen, string> = {
 const panelTitles = { switch: 'Chọn bé', bottle: 'Ghi bình sữa', diaper: 'Thay tã', breast: 'Bắt đầu bú mẹ', sleep: 'Ghi giấc ngủ',
   vaccination: 'Thêm lịch tiêm chủng',
   medication: 'Lịch uống thuốc', meal: 'Ghi ăn uống', growth: 'Ghi chiều cao, cân nặng', activity: 'Ghi hoạt động',
-  'new-family': 'Thêm gia đình', 'new-baby': 'Thêm bé', invite: 'Mời người chăm sóc', join: 'Tham gia gia đình', signout: 'Đăng xuất trên thiết bị', backup: 'Sao lưu và khôi phục', rename: 'Đổi tên hồ sơ' };
+  'new-baby': 'Thêm bé', invite: 'Mời người chăm sóc', join: 'Tham gia gia đình', signout: 'Đăng xuất trên thiết bị', backup: 'Sao lưu và khôi phục', rename: 'Đổi tên hồ sơ', 'bug-report': 'Báo lỗi app' };
 
 export function Tracker({ store, localOnly = false }: { store: LocalStore; localOnly?: boolean }) {
   const view = useStore(store);
@@ -243,9 +244,9 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
               canEdit={!localOnly && sync.online} onRename={target => { setRenameTarget(target); openPanel('rename'); }} />}
             {own && <div className="family-actions"><button disabled={localOnly} onClick={() => openPanel('new-baby')}><Icon name="plus" />Thêm bé</button><button disabled={localOnly} onClick={() => openPanel('invite')}><Icon name="family" />Mời người chăm sóc</button></div>}</article>
             <div className="settings-group">
-              <button className="setting-row" disabled={localOnly} onClick={() => openPanel('new-family')}><Icon name="plus" /><span><strong>Tạo gia đình khác</strong><small>Mỗi gia đình một không gian riêng</small></span><Icon name="chevron" /></button>
               <button className="setting-row" disabled={localOnly} onClick={() => openPanel('join')}><Icon name="family" /><span><strong>Nhận lời mời</strong><small>Cùng người thân chăm sóc bé</small></span><Icon name="chevron" /></button>
               <button className="setting-row" onClick={() => openPanel('backup')}><Icon name="journal" /><span><strong>Sao lưu và khôi phục</strong><small>Tệp riêng trên máy · không ghi đè nhật ký</small></span><Icon name="chevron" /></button>
+              <button className="setting-row" onClick={() => openPanel('bug-report')}><Icon name="bug" /><span><strong>Báo lỗi app</strong><small>Gửi mô tả sự cố tới nhóm phát triển</small></span><Icon name="chevron" /></button>
               <ThemeSwitch />
             </div>
             <div className="settings-group"><button className="setting-row danger" onClick={() => openPanel('signout')}><Icon name="logout" /><span><strong>Đăng xuất</strong><small>Giữ lại dữ liệu chưa gửi trên thiết bị</small></span><Icon name="chevron" /></button></div>
@@ -273,9 +274,10 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       {typeof panel === 'object' && isQuickBody(panel.body) && <JournalEntryForm key={panel.id} body={panel.body} timezone={timezone} saving={saving}
         onSave={body => change(panel, body)} onDelete={() => change(panel, { ...panel.body, deleted: true }, true)} />}
       {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
+      {panel === 'bug-report' && <BugReport />}
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
         onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}
-      {!localOnly && (panel === 'new-family' || panel === 'new-baby') && <OnlineSetup store={store} familyId={panel === 'new-baby' ? family?.id : undefined} onDone={message => { setPanel(null); setNotice(message); sync.kick(); }} />}
+      {!localOnly && panel === 'new-baby' && <OnlineSetup store={store} familyId={family?.id} onDone={message => { setPanel(null); setNotice(message); sync.kick(); }} />}
       {!localOnly && (panel === 'invite' || panel === 'join') && <Invitation store={store} familyId={panel === 'invite' ? family?.id : undefined}
         initialToken={panel === 'join' ? invitationToken : undefined} onDone={() => { setInvitationToken(''); setPanel(null); setNotice('Đã tham gia gia đình.'); sync.kick(); }} />}
       {panel === 'signout' && <div className="stack"><p>Còn {view.operations.length} thay đổi chưa được cloud xác nhận. Đăng xuất sẽ giữ bản local riêng cho tài khoản này, không xóa; chỉ mở lại khi đăng nhập đúng tài khoản.</p><p>Trên máy dùng chung, không coi cache trình duyệt là dữ liệu đã mã hóa. Chưa có chức năng dọn cache trong bản thử này.</p>

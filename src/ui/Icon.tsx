@@ -38,6 +38,7 @@ const shapes = {
   swap: <path d="M4 7h15l-4-4M20 17H5l4 4M19 7l-4 4M5 17l4-4" />,
   close: <path d="m6 6 12 12M6 18 18 6" />,
   logout: <path d="M9 4H4v16h5M10 12h11m-4-4 4 4-4 4" />,
+  bug: <><path d="M8 9h8M8 13h8M9 4l1-2M15 4l-1-2M6 8 3-4h6l3 4v7a6 6 0 0 1-12 0Z" /><path d="M3 10h3M18 10h3M3 15h3M18 15h3M5 20l2-2M19 20l-2-2" /></>,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof shapes;
