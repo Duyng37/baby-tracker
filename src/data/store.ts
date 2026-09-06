@@ -83,6 +83,21 @@ export class LocalStore {
     });
   }
 
+  async retryBlocked(family: string): Promise<number> {
+    return this.db.transaction('rw', this.db.state, this.db.outbox, async () => {
+      const workspace = await this.workspace();
+      if (!workspace.families.some(item => item.id === family)) throw new DataError('Gia đình không còn khả dụng trên thiết bị.');
+      const blocked = (await this.db.outbox.where('family_id').equals(family).toArray())
+        .filter(op => op.blocked && !op.conflict);
+      for (const op of blocked) {
+        const retry = { ...op };
+        delete retry.blocked;
+        await this.db.outbox.put(retry);
+      }
+      return blocked.length;
+    });
+  }
+
   private async mergeServer(event: ServerEvent) {
     decimal(event.revision);
     const old = await this.db.events.get(event.id);

@@ -111,6 +111,17 @@ describe('IndexedDB/outbox invariants', () => {
     await expect(store.list(scope)).rejects.toThrow();
     expect(await db.outbox.count()).toBe(1); expect(await db.events.count()).toBe(1);
   });
+  it('requeues blocked cloud failures without changing their frozen request', async () => {
+    await store.save(scope, 'event-a', body);
+    const op = (await store.nextOperation())!;
+    await db.outbox.update(op.sequence!, { blocked: true });
+    expect(await store.nextOperation()).toBeUndefined();
+    expect(await store.retryBlocked(scope.family_id)).toBe(1);
+    const retry = (await store.nextOperation())!;
+    expect(retry.operation_id).toBe(op.operation_id);
+    expect(retry.request).toEqual(op.request);
+    expect(retry.blocked).toBeUndefined();
+  });
   it('applies pages atomically, rejects cross-scope payload and stale cursor', async () => {
     const first = await store.save(scope, 'event-a', body);
     const wrong = { ...server(first), id: 'wrong', baby_id: 'not-in-family' };

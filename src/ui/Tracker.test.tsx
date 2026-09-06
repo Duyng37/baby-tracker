@@ -209,6 +209,14 @@ it('retains an accessible pending-sync label without claiming success', () => {
   expect(syncButton(html)).toContain(renderToStaticMarkup(<Icon name="swap" />));
   expect(syncButton(html)).not.toContain('spinner');
 });
+it('offers to retry cloud-rejected records separately from revision conflicts', () => {
+  current.operations = [{ family_id: 'family', baby_id: 'baby', operation_id: 'op', event_id: 'event', body: bottle.body,
+    base_revision: '0', depends_on: null, blocked: true }];
+  const html = render();
+  expect(html).toContain('1 bản ghi bị cloud từ chối nhưng vẫn được giữ trên thiết bị.');
+  expect(html).toContain('Thử gửi lại</button>');
+  expect(html).not.toContain('1 bản ghi có xung đột.');
+});
 it('disables retry while syncing and exposes errors instead of a success state', () => {
   busy = true;
   expect(render()).toMatch(/class="icon-button sync-button"[^>]*data-busy="true"[^>]*disabled/);

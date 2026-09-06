@@ -88,7 +88,8 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
   const mine = active.filter(e => e.baby_id === baby?.id);
   const own = view.workspace.memberships.some(m => m.family_id === family?.id && m.user_id === store.db.userId && m.role === 'owner');
   const pending = view.operations.filter(op => op.family_id === family?.id);
-  const conflicted = pending.filter(op => op.conflict || op.blocked).length;
+  const conflicted = pending.filter(op => op.conflict).length;
+  const blocked = pending.filter(op => op.blocked && !op.conflict).length;
   const quarantined = view.operations.filter(op => !view.workspace.families.some(f => f.id === op.family_id)).length;
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => {
@@ -152,6 +153,10 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       setUndo(removable ? { before: event, after: body } : null);
     }, removable ? 'Đã xóa ghi nhận.' : body.type === 'vaccination' ? 'Đã cập nhật lịch tiêm.' : 'Đã cập nhật ghi nhận.', removable || event.body.type === 'vaccination');
   }
+  function retryBlocked() {
+    if (!family || !blocked) return;
+    void write(async () => { await store.retryBlocked(family.id); }, `Đã đưa ${blocked} bản ghi vào hàng chờ gửi lại.`);
+  }
   function timer(event: LocalEvent, action: 'stop' | 'switch') {
     try { change(event, changeTimer(event.body, action)); }
     catch (error) { setNotice(error instanceof DataError ? error.message : 'Không đổi được timer.'); }
@@ -199,7 +204,8 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
     <main id="content" className="content" ref={content} tabIndex={-1} aria-label={screens.find(([key]) => key === screen)![1]}>
       {localOnly && <p className="banner">Đang dùng dữ liệu đã lưu trên thiết bị. Ghi nhận mới vẫn được giữ trên máy; đồng bộ và quản lý gia đình chờ xác thực lại. Quyền truy cập cloud có thể đã thay đổi.</p>}
       {sync.message && <p className="banner" role="status">{sync.message}</p>}
-      {conflicted > 0 && <p className="banner" role="alert">{conflicted} bản ghi có xung đột/lỗi. Cả bản local và phản hồi cloud được giữ; chưa có màn hình giải quyết trong bản thử này.</p>}
+      {blocked > 0 && <p className="banner" role="alert">{blocked} bản ghi bị cloud từ chối nhưng vẫn được giữ trên thiết bị. <button className="text-button" disabled={saving || sync.busy} onClick={retryBlocked}>Thử gửi lại</button></p>}
+      {conflicted > 0 && <p className="banner" role="alert">{conflicted} bản ghi có xung đột. Cả bản local và phản hồi cloud được giữ; chưa có màn hình giải quyết trong bản thử này.</p>}
       {quarantined > 0 && <p className="banner">Có {quarantined} thay đổi được cách ly vì quyền gia đình không còn khả dụng. Không tự xóa dữ liệu.</p>}
       {!baby ? <section className="card stack"><span className="eyebrow">CHÀO MỪNG ĐẾN VỚI NÔI</span><h1>Gia đình của bạn</h1>{localOnly ? <p>Chưa có hồ sơ khả dụng trên máy. Kết nối mạng và xác nhận phiên để tải nhật ký hoặc tạo gia đình.</p> : <OnlineSetup store={store} onDone={sync.kick} />}
         <div className="row"><button disabled={localOnly} onClick={() => openPanel('join')}>Tôi có mã mời</button><button onClick={() => openPanel('backup')}>Sao lưu và khôi phục</button><button className="text-button" onClick={() => openPanel('signout')}>Đăng xuất</button></div></section>
