@@ -62,6 +62,14 @@ it.each(['rename_family', 'rename_baby'])('allows %s through the same account-bo
   expect(rejected.status).toBe(409);
   expect(db.rpc).toHaveBeenCalledOnce();
 });
+it('allows app bug reports through the account-bound business RPC path', async () => {
+  const { base, headers, db } = await setup();
+  const args = { p_description: 'The app stopped saving', p_user_agent: 'Test Browser', p_online: true, p_installed: false };
+  const payload = { name: 'report_app_bug', args, userId: user, projectId: new URL(config.url).hostname };
+  const response = await fetch(`${base}/api/rpc`, { method: 'POST', headers, body: JSON.stringify(payload) });
+  expect(response.status).toBe(200);
+  expect(db.rpc.mock.calls[0].slice(1)).toEqual(['report_app_bug', args]);
+});
 it('callback consumes code then redirects to a clean path with HttpOnly session cookie', async () => {
   const { base, sessions } = await setup(); const start = sessions.start();
   const response = await fetch(`${base}/api/auth?action=callback&code=TEST_ONLY_NOT_A_CODE`, { redirect: 'manual', headers: { Cookie: start.cookie.split(';')[0] } });

@@ -13,12 +13,12 @@ const sync = migrations[2].toLowerCase();
 const rpcNames = [
   'create_family', 'add_baby', 'get_workspace', 'create_invitation', 'list_invitations',
   'revoke_invitation', 'accept_invitation', 'remove_family_member', 'apply_event', 'pull_changes',
-  'rename_family', 'rename_baby',
+  'rename_family', 'rename_baby', 'report_app_bug',
 ];
 const vaultNames = ['bff_session_create', 'bff_session_read', 'bff_session_claim', 'bff_session_save', 'bff_session_delete'];
 
 test('static: ordered migrations are transaction-wrapped, with no destructive DDL', () => {
-  assert.equal(files.length, 7);
+  assert.equal(files.length, 8);
   for (const migration of migrations) {
     const source = migration.replace(/--[^\n]*/g, '').trim();
     assert.match(source, /^begin;/i);
@@ -30,7 +30,7 @@ test('static: ordered migrations are transaction-wrapped, with no destructive DD
 
 test('static: every application table enables RLS, no direct client writes', () => {
   const tables = [...sql.matchAll(/create table ((?:public|private)\.[a-z_]+)/g)].map(match => match[1]);
-  assert.equal(tables.length, 9);
+  assert.equal(tables.length, 10);
   for (const table of tables) assert.ok(sql.includes(`alter table ${table} enable row level security;`));
   assert.doesNotMatch(sql, /grant\s+(?:all|insert|update|delete)[^;]*to\s+(?:authenticated|anon|public)\s*;/);
   assert.doesNotMatch(sql, /create policy[^;]*for\s+(all|insert|update|delete)\b/);
@@ -41,7 +41,7 @@ test('static: every application table enables RLS, no direct client writes', () 
 
 test('static: every function fixes search_path; each public RPC has an explicit ACL', () => {
   const functions = [...sql.matchAll(/create (?:or replace )?function ([a-z_.]+)\(([\s\S]*?)\$\$;/g)];
-  assert.equal(functions.length, 25);
+  assert.equal(functions.length, 26);
   assert.deepEqual([...new Set(functions.filter(([_, name]) => name.startsWith('public.')).map(([_, name]) => name.slice(7)))].sort(), [...rpcNames, ...vaultNames].sort());
   for (const [, name, definition] of functions) {
     assert.match(definition, /set search_path = ''/);
@@ -128,4 +128,13 @@ test('static: care migration only broadens event types and planned-time validati
     .replace("p_event->>'type' = 'vaccination'", "p_event->>'type' in ('vaccination', 'medication')"));
   const testSql = readFileSync(new URL('../supabase/tests/care-events.sql', import.meta.url), 'utf8');
   assert.match(testSql, /rollback;/i); assert.doesNotMatch(testSql, /commit;/i);
+});
+
+test('static: bug reports are private, authenticated, size-limited and rate-limited', () => {
+  const reports = migrations[7].toLowerCase();
+  assert.match(reports, /create table private\.app_bug_reports/);
+  assert.match(reports, /alter table private\.app_bug_reports enable row level security/);
+  assert.match(reports, /length\(btrim\(description\)\) between 10 and 2000/);
+  assert.match(reports, /count\(\*\)[\s\S]*created_at >= now\(\) - interval '1 hour'/);
+  assert.match(reports, /auth\.uid\(\)/);
 });

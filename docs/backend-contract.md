@@ -11,8 +11,8 @@ Không phải chứng nhận production. Đọc [setup](setup.md) trước khi �
 - RPC ghi là `SECURITY DEFINER`, cố định `search_path`, kiểm tra `auth.uid()` và membership
   trước khi thao tác. Vì definer có thể vượt RLS, các kiểm tra RPC là một lớp bảo mật bắt buộc,
   không được bỏ chỉ vì bảng đã bật RLS. Frontend không sử dụng service-role; BFF vẫn gọi
-  12 RPC nghiệp vụ bằng JWT người dùng, có kiểm tra expected user/project trên mỗi request.
-- `private`: outbox ACK server, change log, lời mời, rate counter; không expose qua Data API.
+  13 RPC nghiệp vụ bằng JWT người dùng, có kiểm tra expected user/project trên mỗi request.
+- `private`: outbox ACK server, change log, lời mời, báo lỗi và rate counter; không expose qua Data API.
   Chỉ helper membership được cấp execute cho authenticated để policy SELECT dùng được.
 - Chủ gia đình tạo/đổi tên hồ sơ/mời/thu hồi; caregiver được ghi nhật ký. Không có RPC tự nâng vai trò.
 - Chưa có API chuyển chủ, xóa gia đình/tài khoản hoặc garbage collection.
@@ -36,6 +36,7 @@ Tham số và chữ ký chính xác nằm trong migration; tên dưới đây c�
 | `remove_family_member` | family ID, user ID | Owner-only; không xóa chủ cuối cùng; hủy lời mời chưa dùng của người bị xóa |
 | `apply_event` | operation/device/family/baby/event UUID, base revision, event body | Kiểm tra scope/revision, ghi atomically event + change log + kết quả idempotency |
 | `pull_changes` | family ID, after cursor, limit 1–500 | Phân trang thay đổi gồm tombstone; mặc định 200; cursor dưới dạng chuỗi |
+| `report_app_bug` | mô tả, user-agent, trạng thái mạng, chế độ cài app | Lưu báo lỗi riêng tư theo tài khoản; tối đa 5 báo cáo/giờ |
 
 Đổi tên cần migration `202609050005_profile_names.sql` và BFF có allowlist tương ứng.
 Client cần mạng, giữ nguyên ID/nhật ký và tải lại `get_workspace` sau khi gửi; không đưa

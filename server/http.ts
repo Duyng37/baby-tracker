@@ -5,7 +5,8 @@ import { backend } from './supabase.ts';
 
 type Request = IncomingMessage & { body?: unknown };
 const allowedRPCs = new Set(['create_family', 'add_baby', 'get_workspace', 'create_invitation', 'list_invitations',
-  'revoke_invitation', 'accept_invitation', 'remove_family_member', 'apply_event', 'pull_changes', 'rename_family', 'rename_baby']);
+  'revoke_invitation', 'accept_invitation', 'remove_family_member', 'apply_event', 'pull_changes', 'rename_family', 'rename_baby',
+  'report_app_bug']);
 const header = (req: Request, name: string) => typeof req.headers[name] === 'string' ? req.headers[name] : undefined;
 const json = (res: ServerResponse, status: number, value: unknown) => {
   res.statusCode = status; res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(JSON.stringify(value));

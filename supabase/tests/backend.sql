@@ -42,6 +42,7 @@ begin
   perform pg_temp.assert_true((select count(*) = 2 from public.babies), 'multiple babies');
   perform pg_temp.assert_true((select role = 'owner' from public.family_members where user_id = auth.uid()), 'creator is owner');
   insert into test_state values ('invite', public.create_invitation('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'));
+  perform pg_temp.assert_true(public.report_app_bug('The save button stopped responding', 'Test Browser', true, false)->>'status' = 'created', 'bug report created');
 end $$;
 
 do $$ begin perform set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true); end $$;
@@ -209,11 +210,14 @@ reset role;
 select pg_temp.assert_true((select sync_cursor = 8 from public.families where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 'only accepted writes increment cursor');
 select pg_temp.assert_true((select count(*) = 8 from private.event_changes), 'one log entry per accepted write');
 select pg_temp.assert_true((select count(*) = 10 from private.sync_operations), 'ACKs and conflicts durable; rejected writes atomic');
+select pg_temp.assert_true((select count(*) = 1 from private.app_bug_reports
+  where description = 'The save button stopped responding' and user_agent = 'Test Browser'), 'bug report stored privately');
 
 set local role anon;
 select pg_temp.expect_error($q$select * from public.babies$q$, '42501', 'anonymous table access denied');
 select pg_temp.expect_error($q$select public.get_workspace()$q$, '42501', 'anonymous RPC access denied');
 select pg_temp.expect_error($q$select public.accept_invitation('invalid')$q$, '42501', 'anonymous invitation attempt denied');
+select pg_temp.expect_error($q$select public.report_app_bug('Anonymous report attempt', 'Test Browser', true, false)$q$, '42501', 'anonymous bug report denied');
 reset role;
 rollback;
 select 'Backend integration assertions passed; all fixtures rolled back.' as result;

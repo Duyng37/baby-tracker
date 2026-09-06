@@ -274,7 +274,8 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       {typeof panel === 'object' && isQuickBody(panel.body) && <JournalEntryForm key={panel.id} body={panel.body} timezone={timezone} saving={saving}
         onSave={body => change(panel, body)} onDelete={() => change(panel, { ...panel.body, deleted: true }, true)} />}
       {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
-      {panel === 'bug-report' && <BugReport />}
+      {panel === 'bug-report' && <BugReport store={store} localOnly={localOnly}
+        onDone={() => { setPanel(null); setNotice('Đã gửi báo lỗi. Cảm ơn bạn đã phản hồi.'); }} />}
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
         onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}
       {!localOnly && panel === 'new-baby' && <OnlineSetup store={store} familyId={family?.id} onDone={message => { setPanel(null); setNotice(message); sync.kick(); }} />}
