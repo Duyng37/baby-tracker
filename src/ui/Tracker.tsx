@@ -11,7 +11,7 @@ import { OnlineSetup } from './OnlineSetup';
 import { Invitation } from './Invitation';
 import { Icon } from './Icon';
 import { LoadingScreen } from './LoadingScreen';
-import { eventDetail, isJournalBody, Journal, journalEvents } from './Journal';
+import { isJournalBody, Journal, journalEvents } from './Journal';
 import { JournalDateInput } from './JournalDateInput';
 import { formatDate } from './DateInput';
 import { Metrics } from './Metrics';
@@ -34,6 +34,8 @@ import { MedicationSchedule } from './MedicationSchedule';
 import { scheduleToastDismiss } from './toast';
 import type { RenameTarget } from '../cloud/rename-profile';
 import { consumePendingInvitation } from './invitation-link';
+import { JournalEntryForm } from './JournalEntryForm';
+import { isQuickBody } from './journal-entry';
 
 type Screen = 'today' | 'journal' | 'care' | 'family';
 type Panel = null | 'switch' | EventBody['type'] | 'new-family' | 'new-baby' | 'invite' | 'join' | 'signout' | 'backup' | 'rename' | LocalEvent;
@@ -268,7 +270,8 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
       {typeof panel === 'string' && isCareType(panel) && <CareForm key={panel} type={panel} kind={activityKind} timezone={timezone} saving={saving} onSave={create} />}
       {typeof panel === 'object' && isCareBody(panel.body) && <CareForm key={panel.id} type={panel.body.type} body={panel.body} timezone={timezone} saving={saving}
         onSave={body => change(panel, body)} onDelete={() => change(panel, { ...panel.body, deleted: true }, true)} />}
-      {typeof panel === 'object' && panel.body.type !== 'vaccination' && !isCareBody(panel.body) && <form className="stack" onSubmit={e => { e.preventDefault(); change(panel, { ...panel.body, note: String(new FormData(e.currentTarget).get('note') ?? '') }); }}><div className="card stack"><p className="sheet-intro">{labels[panel.body.type]} · {timeLabel(panel.body.started_at)}</p><p>{eventDetail(panel.body)}</p></div><label>Ghi chú<textarea name="note" maxLength={500} placeholder="Một điều nhỏ bạn muốn nhớ…" defaultValue={panel.body.note} /></label><button className="primary" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu trên máy'}</button><button type="button" className="danger-button" disabled={saving} onClick={() => change(panel, { ...panel.body, deleted: true }, true)}>Xóa ghi nhận</button></form>}
+      {typeof panel === 'object' && isQuickBody(panel.body) && <JournalEntryForm key={panel.id} body={panel.body} timezone={timezone} saving={saving}
+        onSave={body => change(panel, body)} onDelete={() => change(panel, { ...panel.body, deleted: true }, true)} />}
       {panel === 'backup' && <BackupPanel store={store} localOnly={localOnly} onRestored={sync.kick} />}
       {!localOnly && own && panel === 'rename' && renameTarget && <RenameProfile store={store} target={renameTarget}
         onDone={() => { setPanel(null); setNotice('Đã cập nhật tên.'); sync.kick(); }} />}

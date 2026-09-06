@@ -46,6 +46,7 @@ import { CareForm } from './CareForm';
 import { MedicationSchedule } from './MedicationSchedule';
 import { VaccinationSchedule } from './VaccinationSchedule';
 import { VaccinationForm } from './VaccinationForm';
+import { JournalEntryForm } from './JournalEntryForm';
 
 const store = { db: { userId: 'owner' }, save } as unknown as LocalStore;
 const entry: LocalEvent = { id: 'event', family_id: 'family', baby_id: 'baby', server: null, version: 1,
@@ -75,7 +76,7 @@ async function perform(action: () => void | Promise<void>) {
 async function openRecord() { await perform(() => component(QuickActions).onAction('bottle')); }
 async function removeRecord() {
   await perform(() => component(Journal).onSelect(entry));
-  await perform(button('Xóa ghi nhận'));
+  await perform(() => component(JournalEntryForm).onDelete());
 }
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-05T09:00:00.000Z')); vi.clearAllMocks();
@@ -198,6 +199,15 @@ it('keeps an explicit deletion notice and undo, then confirms restoration', asyn
   await perform(button('Hoàn tác'));
   expect(edit).toHaveBeenLastCalledWith(store, { ...entry, body: { ...entry.body, deleted: true } }, entry.body);
   expect(kick).toHaveBeenCalledTimes(2); expect(feedback()).toContain('Đã khôi phục ghi nhận.');
+});
+it('opens a journal item with full editable details and saves it on the same event', async () => {
+  await perform(() => component(Journal).onSelect(entry));
+  expect(component(JournalEntryForm).body).toEqual(entry.body);
+  const changed = { ...entry.body, type: 'bottle' as const, started_at: '2026-09-05T07:30:00.000Z', note: 'Sau khi ngủ dậy',
+    payload: { amount_ml: 120, milk: 'breast_milk' as const } };
+  await perform(() => component(JournalEntryForm).onSave(changed));
+  expect(edit).toHaveBeenCalledWith(store, entry, changed);
+  expect(feedback()).toContain('Đã cập nhật ghi nhận.');
 });
 it('places success feedback below the header and above the main content', async () => {
   await removeRecord();

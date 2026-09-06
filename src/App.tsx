@@ -101,7 +101,7 @@ export function App() {
   return <main className="welcome"><div className="welcome-top"><span className="brand"><BrandMark />nôi.</span>
     <button className="icon-button theme-button" aria-label={theme === 'dark' ? 'Bật chế độ sáng' : 'Bật chế độ tối'} onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'sleep'} /></button></div>
     <span className="eyebrow">NHỮNG NGÀY ĐẦU, BÊN CON</span>
-    <h1>Ít thao tác hơn.<br />Thêm thời gian <span>bên con.</span></h1><p>Nhật ký bú, ngủ và thay tã. Cả gia đình cùng chăm sóc, mỗi bé một không gian riêng.</p>
+    <h1>Ít thao tác hơn.<br />Thêm thời gian <span>bên con.</span></h1><p>Nhật ký bú, ngủ, thay tã và nhiều hơn nữa. Cả gia đình cùng chăm sóc, mỗi bé một không gian riêng.</p>
     <div className="welcome-features"><span><Icon name="check" /> Ghi nhanh, nhẹ nhàng</span><span><Icon name="family" /> Cùng người thân</span></div>
     <button className="primary" disabled={signingIn} onClick={() => {
       // Local dev bypass: the Google flow is skipped and the app opens immediately.
