@@ -3,6 +3,8 @@ import { authenticatedTransport } from '../cloud/supabase';
 import type { LocalStore } from '../data/store';
 import { CloudError, retryDelay, synchronize } from './engine';
 
+export const backgroundSyncInterval = 10 * 60_000;
+
 export function useSync(store: LocalStore, enabled = true) {
   const [status, setStatus] = useState({ busy: false, message: '', online: navigator.onLine });
   const trigger = useRef<() => void>(() => {});
@@ -40,7 +42,7 @@ export function useSync(store: LocalStore, enabled = true) {
         running = false;
         if (!lifetime.signal.aborted) {
           setStatus(s => ({ ...s, busy: false }));
-          timer = setTimeout(run, requested ? 300 : attempts ? retryDelay(attempts) : 30_000);
+          timer = setTimeout(run, requested ? 300 : attempts ? retryDelay(attempts) : backgroundSyncInterval);
           requested = false;
         }
       }
