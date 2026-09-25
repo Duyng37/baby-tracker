@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { dayBounds, dayKey, summarize, summarizeDay } from './summary';
+import { dayBounds, dayKey, monthDays, recentDays, summarize, summarizeDay, weekDays } from './summary';
 import type { EventBody, LocalEvent } from './types';
 
 it('day filtering uses family timezone, not device timezone', () => {
@@ -65,6 +65,21 @@ it.each(['sleep', 'breast'] as const)('clips completed and running %s timers to 
 it.each([['2026-03-08', 23], ['2026-11-01', 25]] as const)('counts actual timer hours on DST day %s', (day, hours) => {
   const events = [timer('sleep', `${day}T00:00:00Z`)];
   expect(summarizeDay(events, day, 'America/New_York', Date.parse('2026-11-03T00:00:00Z')).sleep).toBe(hours * 3_600_000);
+});
+
+it('lists recent calendar days oldest first across month boundaries', () => {
+  expect(recentDays('2026-03-02', 3)).toEqual(['2026-02-28', '2026-03-01', '2026-03-02']);
+  expect(recentDays('2026-09-05', 30)).toHaveLength(30);
+  expect(recentDays('2026-09-05', 30)[0]).toBe('2026-08-07');
+});
+it('lists the Monday-to-Sunday week and the full calendar month', () => {
+  expect(weekDays('2026-09-05')).toEqual(['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05', '2026-09-06']);
+  expect(weekDays('2026-09-07')[0]).toBe('2026-09-07');
+  expect(weekDays('2026-09-06').at(-1)).toBe('2026-09-06');
+  expect(monthDays('2026-09-05')).toHaveLength(30);
+  expect(monthDays('2028-02-10')).toHaveLength(29);
+  expect(monthDays('2026-12-31')[0]).toBe('2026-12-01');
+  expect(monthDays('2026-12-31').at(-1)).toBe('2026-12-31');
 });
 
 it('returns zero for an empty day or a future day, even with an ongoing timer', () => {

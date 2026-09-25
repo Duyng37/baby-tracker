@@ -132,6 +132,23 @@ code { overflow-wrap: anywhere; }
 .metric strong { display: block; font-size: clamp(1.125rem, 4vw, 1.5rem); font-weight: 620; letter-spacing: -.035em; margin: 12px 0 4px; line-height: 1.4; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .metric strong span { font-size: .8125rem; font-weight: 400; color: var(--secondary); letter-spacing: 0; }
 .metric p { font-size: .6875rem; color: var(--secondary); }
+.journal-chart { gap: 12px; }
+.journal-chart > .section-heading { margin-bottom: 0; }
+.chart-options { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: var(--subtle); }
+.chart-options button { min-width: 0; min-height: 44px; padding: 6px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--secondary); font-size: .75rem; }
+.chart-options button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px var(--shadow); }
+.chart-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.chart-header h3 { font-size: .8125rem; font-weight: 600; }
+.chart-header small { color: var(--secondary); font-size: .6875rem; }
+.bar-chart { display: flex; align-items: stretch; justify-content: space-between; gap: 8px; height: 160px; }
+.bar-column { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.bar-column span { height: 1.6em; line-height: 1.6em; font-size: .625rem; color: var(--secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar-chart[data-dense="true"] { gap: 2px; }
+.bar-column[data-future="true"] .bar-track { border-bottom: 1px dashed var(--field-line); }
+.bar-track { display: flex; align-items: flex-end; flex: 1; width: 100%; max-width: 30px; }
+.bar { width: 100%; min-height: 3px; border-radius: 5px 5px 2px 2px; background: var(--accent-line); }
+.bar-column[data-current="true"] .bar { background: var(--primary); }
+.bar-column[data-current="true"] span { color: var(--soft-ink); font-weight: 650; }
 .disclaimer { display: flex; gap: 8px; align-items: flex-start; padding: 12px 0 0; }
 .disclaimer .icon { width: 16px; height: 16px; margin-top: 2px; color: var(--secondary); }
 .journal-filters { padding: 14px; margin-bottom: 14px; background: var(--subtle); border-radius: 14px; }
@@ -335,4 +352,7 @@ input::file-selector-button { font: inherit; border: 1px solid var(--line); bord
   .theme-setting[aria-checked="true"] > .switch-track { background: Highlight; forced-color-adjust: none; }
   .theme-setting[aria-checked="true"] .switch-thumb { background: HighlightText; }
   .time-input-options button[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -2px; }
+  .chart-options button[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -2px; }
+  .bar { background: CanvasText; forced-color-adjust: none; }
+  .bar-column[data-current="true"] .bar { background: Highlight; }
 }

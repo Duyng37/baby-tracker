@@ -96,7 +96,24 @@ it('merges the overview above the journal on the journal screen', () => {
   expect(html).not.toContain('24 giờ qua');
   expect(html).toContain('90 <span>ml</span>');
   expect(html.indexOf('Ngày hôm nay')).toBeLessThan(html.indexOf('Nhật ký · Bông'));
-  expect(html).toContain('7 ngày gần nhất');
+  expect(html).toContain('Biểu đồ sinh hoạt');
+});
+it('renders the current-week chart by default on the journal screen', () => {
+  journalScreen = true;
+  current.events = [bottle];
+  const html = render();
+  expect(html).toContain('role="group" aria-label="Chọn khoảng thời gian biểu đồ"');
+  expect(html).toMatch(/<button type="button" aria-pressed="true">Tuần này<\/button>/);
+  expect(html).toContain('>Tháng này</button>');
+  expect(html).toContain('>30 ngày</button>');
+  expect(html).toContain('role="group" aria-label="Chọn chỉ số biểu đồ"');
+  expect(html).toMatch(/<button type="button" aria-pressed="true">Giấc ngủ<\/button>/);
+  expect(html).toContain('Tuần 31/8 – 6/9: đã ghi 1 hoạt động cho Bông.');
+  expect(html).toContain('aria-label="Giấc ngủ, Tuần 31/8 – 6/9: 31/8 0 phút;');
+  expect(html.match(/class="bar-column"/g)).toHaveLength(7);
+  expect(html.match(/data-future="true"/g)).toHaveLength(1);
+  expect(html).toContain('data-current="true"');
+  expect(html).not.toContain('Biểu đồ theo ngày sẽ được bổ sung');
 });
 it.each(['today', 'journal'])('uses the family calendar day for both totals and entries on %s', screen => {
   journalScreen = screen === 'journal';

@@ -11,10 +11,11 @@ import { OnlineSetup } from './OnlineSetup';
 import { Invitation } from './Invitation';
 import { Icon } from './Icon';
 import { LoadingScreen } from './LoadingScreen';
-import { isJournalBody, Journal, journalEvents } from './Journal';
+import { Journal, journalEvents } from './Journal';
 import { JournalDateInput } from './JournalDateInput';
 import { formatDate } from './DateInput';
 import { Metrics } from './Metrics';
+import { JournalChart } from './JournalChart';
 import { useTheme } from './theme';
 import { saveUnchangedEvent } from './event-edits';
 import { authEvents } from '../cloud/supabase';
@@ -234,7 +235,9 @@ export function Tracker({ store, localOnly = false }: { store: LocalStore; local
             {!visible.length && <div className="empty"><Icon name="journal" /><h3>{screen === 'journal' ? 'Chưa có hoạt động phù hợp.' : 'Một khoảng trống nhỏ, sẵn sàng để ghi.'}</h3><p>{screen === 'journal' ? 'Thử chọn ngày hoặc hoạt động khác. Khi ghi nhanh, bạn có thể chọn ngày/giờ để ghi bù.' : `Chạm một trong bốn nút bên dưới để ghi cho ${baby.nickname}.`}</p></div>}
             <Journal events={visible} timezone={timezone} onSelect={openPanel} />
           </section>}
-          {screen === 'journal' && <section className="card stack"><div className="section-heading"><h2>7 ngày gần nhất</h2><Icon name="insights" /></div><p>Đã ghi {events.filter(e => isJournalBody(e.body) && Date.parse(e.body.started_at) >= now - 7 * 86_400_000).length} hoạt động cho {baby.nickname}.</p><p className="muted">Mỗi ghi nhận là một chút an tâm. Biểu đồ theo ngày sẽ được bổ sung; bạn có thể xuất bản sao lưu ở màn Gia đình.</p></section>}
+          {screen === 'journal' && <section className="card stack journal-chart">
+            <JournalChart events={events} today={today} timezone={timezone} now={now} babyName={baby.nickname} />
+            <p className="muted">Mỗi ghi nhận là một chút an tâm. Bạn có thể xuất bản sao lưu ở màn Gia đình.</p></section>}
           {screen === 'care' && scope && <section className="stack">
             <CareActions babyName={baby.nickname} running={mine} saving={saving} onAction={openCare} />
             <MedicationSchedule events={events} scope={scope} babyName={baby.nickname} timezone={timezone} now={now} saving={saving}

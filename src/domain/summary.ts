@@ -29,6 +29,24 @@ export function dayBounds(day: string, timezone: string): [number, number] {
   }
   return [boundary(utc), boundary(utc + 86_400_000)];
 }
+function addDays(day: string, count: number) {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + count * 86_400_000).toISOString().slice(0, 10);
+}
+/** Calendar days ending with `day`, oldest first. */
+export function recentDays(day: string, count: number) {
+  return Array.from({ length: count }, (_, index) => addDays(day, index - count + 1));
+}
+/** Monday to Sunday of the calendar week containing `day`. */
+export function weekDays(day: string) {
+  const offset = (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7;
+  return Array.from({ length: 7 }, (_, index) => addDays(day, index - offset));
+}
+/** Every day of the calendar month containing `day`. */
+export function monthDays(day: string) {
+  const [year, month] = day.split('-').map(Number);
+  const count = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return Array.from({ length: count }, (_, index) => addDays(`${day.slice(0, 8)}01`, index));
+}
 export function duration(ms: number) {
   const minutes = Math.max(0, Math.floor(ms / 60_000));
   return minutes >= 60 ? `${Math.floor(minutes / 60)} giờ ${minutes % 60} phút` : `${minutes} phút`;

@@ -27,6 +27,9 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
   Chọn ngày cũ trong Nhật ký không ảnh hưởng ngày và số liệu của tab Hôm nay.
   Ranh giới ngày theo timezone gia đình; ngủ/bú mẹ qua nửa đêm chỉ cộng thời lượng trong ngày đó,
   gồm timer đang chạy nhưng không vượt quá hiện tại. Bộ lọc hoạt động chỉ lọc danh sách, không đổi tổng hợp ngày.
+- Tab Nhật ký có biểu đồ cột theo **Tuần này** (Thứ Hai–Chủ Nhật), **Tháng này** hoặc **30 ngày** gần nhất,
+  tính theo hôm nay (không theo ngày đang lọc); chọn Giấc ngủ / Sữa bình / Bú mẹ / Thay tã. Ngày tương lai để trống,
+  trung bình chỉ tính các ngày đến hôm nay. Cùng cách tính với tổng hợp ngày; không dùng thư viện biểu đồ.
 - Tạo/nhận mã mời caregiver; token chỉ ở bộ nhớ UI, không vào IndexedDB hoặc URL.
 - PWA cache giao diện để mở lại khi mất mạng; xuất/khôi phục sao lưu JSON trong màn Gia đình.
 
@@ -165,7 +168,7 @@ workspaces hay monorepo tooling. Giữ `wireframes/` độc lập để đối c
 
 - Offline phụ thuộc cache còn trên **đúng trình duyệt/PWA**, storage không bị xóa và đã chuẩn bị
   khi có mạng. Không đảm bảo lưu vĩnh viễn; chưa nghiệm thu cold start trên iPhone/Android thật.
-- Chưa có UI chọn bản thắng khi conflict/invalid, chỉnh giờ/ghi trước đó, biểu đồ 7/30 ngày,
+- Chưa có UI chọn bản thắng khi conflict/invalid, chỉnh giờ/ghi trước đó,
   hoặc UI thu hồi lời mời/thành viên. RPC thu hồi đã có ở backend.
 - Tên vai trò/số thành viên có thật từ workspace; chưa có tên hiển thị từng người dùng.
 - Preset lượng sữa là nút nhập nhanh, **không phải khuyến cáo y tế**.
