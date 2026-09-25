@@ -143,12 +143,18 @@ code { overflow-wrap: anywhere; }
 .bar-chart { display: flex; align-items: stretch; justify-content: space-between; gap: 8px; height: 160px; }
 .bar-column { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; }
 .bar-column span { height: 1.6em; line-height: 1.6em; font-size: .625rem; color: var(--secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.bar-chart[data-dense="true"] { gap: 2px; }
 .bar-column[data-future="true"] .bar-track { border-bottom: 1px dashed var(--field-line); }
 .bar-track { display: flex; align-items: flex-end; flex: 1; width: 100%; max-width: 30px; }
 .bar { width: 100%; min-height: 3px; border-radius: 5px 5px 2px 2px; background: var(--accent-line); }
 .bar-column[data-current="true"] .bar { background: var(--primary); }
 .bar-column[data-current="true"] span { color: var(--soft-ink); font-weight: 650; }
+.bar-list { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.bar-list li { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) 3.5em; align-items: center; gap: 8px; min-height: 22px; font-size: .75rem; color: var(--secondary); font-variant-numeric: tabular-nums; }
+.bar-list li > span:last-child { text-align: right; color: var(--ink); }
+.bar-list .bar-track { display: block; height: 12px; max-width: none; }
+.bar-list .bar { height: 100%; min-height: 0; min-width: 3px; border-radius: 2px 5px 5px 2px; }
+.bar-list li[data-current="true"] .bar { background: var(--primary); }
+.bar-list li[data-current="true"] > span { color: var(--soft-ink); font-weight: 650; }
 .disclaimer { display: flex; gap: 8px; align-items: flex-start; padding: 12px 0 0; }
 .disclaimer .icon { width: 16px; height: 16px; margin-top: 2px; color: var(--secondary); }
 .journal-filters { padding: 14px; margin-bottom: 14px; background: var(--subtle); border-radius: 14px; }
@@ -354,5 +360,5 @@ input::file-selector-button { font: inherit; border: 1px solid var(--line); bord
   .time-input-options button[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -2px; }
   .chart-options button[aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -2px; }
   .bar { background: CanvasText; forced-color-adjust: none; }
-  .bar-column[data-current="true"] .bar { background: Highlight; }
+  .bar-column[data-current="true"] .bar, .bar-list li[data-current="true"] .bar { background: Highlight; }
 }

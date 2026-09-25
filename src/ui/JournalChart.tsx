@@ -12,6 +12,7 @@ const metrics: [Metric, string, string][] = [
 ];
 const periods: [Period, string][] = [['week', 'Tuần này'], ['month', 'Tháng này'], ['recent', '30 ngày']];
 const timed = (metric: Metric) => metric === 'sleep' || metric === 'breast';
+const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const shortDate = (day: string) => `${Number(day.slice(8))}/${Number(day.slice(5, 7))}`;
 
 export function JournalChart({ events, today, timezone, now, babyName }: { events: LocalEvent[]; today: string; timezone: string; now: number; babyName: string }) {
@@ -29,9 +30,8 @@ export function JournalChart({ events, today, timezone, now, babyName }: { event
   const from = dayBounds(days[0], timezone)[0];
   const to = Math.min(now, dayBounds(days.at(-1)!, timezone)[1]);
   const count = events.filter(e => isJournalBody(e.body) && Date.parse(e.body.started_at) >= from && Date.parse(e.body.started_at) < to).length;
-  const todayIndex = days.indexOf(today);
-  const dayLabel = (day: string, index: number) => day === today ? 'Nay*'
-    : !dense || (index % 5 === 0 && Math.abs(index - todayIndex) > 2) ? shortDate(day) : '';
+  const dayLabel = (day: string) => day === today ? 'Nay*' : shortDate(day);
+  const weekday = (day: string) => weekdays[new Date(`${day}T00:00:00Z`).getUTCDay()];
   const barText = (value: number) => timed(metric) ? (value / 3_600_000).toFixed(1).replace('.', ',') : String(Math.round(value));
   const spoken = (value: number) => timed(metric) ? duration(value) : metric === 'bottle' ? `${Math.round(value)} ml` : `${Math.round(value * 10) / 10} lần`;
   return <>
@@ -42,13 +42,21 @@ export function JournalChart({ events, today, timezone, now, babyName }: { event
       <button key={key} type="button" aria-pressed={metric === key} onClick={() => setMetric(key)}>{name}</button>)}</div>
     <p>{title}: đã ghi {count} hoạt động cho {babyName}.</p>
     <div className="chart-header"><h3>{label}</h3><small>{unit}</small></div>
-    <div className="bar-chart" data-dense={dense} role="img" aria-label={`${label}, ${title}: ${elapsed.map(day => `${day === today ? 'hôm nay' : shortDate(day)} ${spoken(values[days.indexOf(day)])}`).join('; ')}`}>
-      {days.map((day, index) => <div className="bar-column" data-current={day === today} data-future={day > today} aria-hidden="true" key={day}>
-        {!dense && <span>{day > today ? '' : barText(values[index])}</span>}
-        <div className="bar-track">{day <= today && <div className="bar" style={{ height: `${Math.round(values[index] / max * 100)}%` }} />}</div>
-        <span>{dayLabel(day, index)}</span>
-      </div>)}
-    </div>
+    {dense ? <ol className="bar-list" aria-label={`${label}, ${title}`}>{elapsed.map(day => {
+      const value = values[days.indexOf(day)];
+      return <li key={day} data-current={day === today} aria-label={`${day === today ? 'Hôm nay' : `${weekday(day)} ${shortDate(day)}`}: ${spoken(value)}`}>
+        <span aria-hidden="true">{weekday(day)} {dayLabel(day)}</span>
+        <div className="bar-track" aria-hidden="true"><div className="bar" style={{ width: `${Math.round(value / max * 100)}%` }} /></div>
+        <span aria-hidden="true">{barText(value)}</span>
+      </li>;
+    })}</ol>
+      : <div className="bar-chart" role="img" aria-label={`${label}, ${title}: ${elapsed.map(day => `${day === today ? 'hôm nay' : shortDate(day)} ${spoken(values[days.indexOf(day)])}`).join('; ')}`}>
+        {days.map((day, index) => <div className="bar-column" data-current={day === today} data-future={day > today} aria-hidden="true" key={day}>
+          <span>{day > today ? '' : barText(values[index])}</span>
+          <div className="bar-track">{day <= today && <div className="bar" style={{ height: `${Math.round(values[index] / max * 100)}%` }} />}</div>
+          <span>{dayLabel(day)}</span>
+        </div>)}
+      </div>}
     <p className="muted">Trung bình {spoken(average)} mỗi ngày, tính trên {elapsed.length} ngày đến hôm nay.
       * Hôm nay chưa kết thúc. Biểu đồ chỉ phản ánh những gì đã ghi, không phải đánh giá sức khỏe.</p>
   </>;
