@@ -5,7 +5,7 @@ import type { EventBody, LocalEvent } from '../domain/types';
 import { Icon } from './Icon';
 
 export function isJournalBody(body: EventBody) {
-  return !body.deleted && body.type !== 'vaccination' && !(body.type === 'medication' && body.payload.status === 'planned');
+  return !body.deleted && body.type !== 'vaccination' && body.type !== 'expense' && !(body.type === 'medication' && body.payload.status === 'planned');
 }
 export function journalEvents(events: LocalEvent[], day: string, timezone: string, filter = 'all') {
   return events.filter(event => isJournalBody(event.body) && (filter === 'all' || event.body.type === filter)

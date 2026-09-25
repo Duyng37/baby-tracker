@@ -26,3 +26,15 @@ it('precision-sensitive values accept only canonical decimal strings', () => {
   expect(() => decimal('9007199254740993')).not.toThrow();
   for (const value of [1, -1, '01', '-1', '1.2', '1e3', '']) expect(() => decimal(value)).toThrow();
 });
+it('expense payloads require a positive VND amount and a trimmed name only for custom categories', () => {
+  const base = { type: 'expense', started_at: '2026-09-01T08:00:00Z', ended_at: null, note: '', deleted: false,
+    payload: { amount: 250000, category: 'milk', custom_category: '', title: '2 hộp sữa', payer: 'mother', method: 'transfer' } } as EventBody;
+  if (base.type !== 'expense') throw new Error();
+  expect(() => validateBody(base)).not.toThrow();
+  expect(() => validateBody({ ...base, payload: { ...base.payload, category: 'custom', custom_category: 'Bơi lội' } })).not.toThrow();
+  for (const payload of [
+    { amount: 0 }, { amount: 1.5 }, { amount: 1_000_000_001 }, { category: 'custom', custom_category: '' },
+    { category: 'custom', custom_category: ' Bơi ' }, { custom_category: 'Bơi lội' }, { payer: 'grandma' }, { method: 'crypto' },
+  ]) expect(() => validateBody({ ...base, payload: { ...base.payload, ...payload } } as EventBody)).toThrow();
+  expect(() => validateBody({ ...base, ended_at: '2026-09-01T09:00:00Z' })).toThrow();
+});

@@ -18,7 +18,7 @@ const rpcNames = [
 const vaultNames = ['bff_session_create', 'bff_session_read', 'bff_session_claim', 'bff_session_save', 'bff_session_delete'];
 
 test('static: ordered migrations are transaction-wrapped, with no destructive DDL', () => {
-  assert.equal(files.length, 8);
+  assert.equal(files.length, 9);
   for (const migration of migrations) {
     const source = migration.replace(/--[^\n]*/g, '').trim();
     assert.match(source, /^begin;/i);
@@ -41,7 +41,7 @@ test('static: every application table enables RLS, no direct client writes', () 
 
 test('static: every function fixes search_path; each public RPC has an explicit ACL', () => {
   const functions = [...sql.matchAll(/create (?:or replace )?function ([a-z_.]+)\(([\s\S]*?)\$\$;/g)];
-  assert.equal(functions.length, 26);
+  assert.equal(functions.length, 28);
   assert.deepEqual([...new Set(functions.filter(([_, name]) => name.startsWith('public.')).map(([_, name]) => name.slice(7)))].sort(), [...rpcNames, ...vaultNames].sort());
   for (const [, name, definition] of functions) {
     assert.match(definition, /set search_path = ''/);

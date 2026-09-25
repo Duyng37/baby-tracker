@@ -1,7 +1,7 @@
 import type { ActivityKind, EventBody, LocalEvent } from './types';
 
 export const labels = { bottle: 'Bình sữa', diaper: 'Thay tã', sleep: 'Ngủ', breast: 'Bú mẹ', vaccination: 'Tiêm chủng',
-  medication: 'Uống thuốc', meal: 'Ăn uống', growth: 'Chiều cao, cân nặng', activity: 'Hoạt động' } satisfies Record<EventBody['type'], string>;
+  medication: 'Uống thuốc', meal: 'Ăn uống', growth: 'Chiều cao, cân nặng', activity: 'Hoạt động', expense: 'Chi tiêu' } satisfies Record<EventBody['type'], string>;
 export const activityLabels = { bath: 'Tắm', tummy_time: 'Tummy time (nằm sấp)', outdoor: 'Ngoài trời (Outdoor)',
   indoor: 'Trong nhà (Indoor)', brushing_teeth: 'Đánh răng' } satisfies Record<ActivityKind, string>;
 function dateKey(parts: Intl.DateTimeFormatPart[]) {

@@ -1,5 +1,8 @@
 export type Side = 'left' | 'right';
 export type ActivityKind = 'bath' | 'tummy_time' | 'outdoor' | 'indoor' | 'brushing_teeth';
+export type ExpenseCategory = 'milk' | 'diaper' | 'food' | 'health' | 'clothes' | 'education' | 'toys' | 'other' | 'custom';
+export type ExpensePayer = 'father' | 'mother' | 'other';
+export type ExpenseMethod = 'cash' | 'transfer' | 'card' | 'ewallet';
 export type Segment = { side: Side; started_at: string; ended_at: string | null };
 type Common = { started_at: string; ended_at: string | null; note: string; deleted: boolean };
 export type EventBody = Common & (
@@ -12,11 +15,13 @@ export type EventBody = Common & (
   | { type: 'meal'; payload: { food: string; amount: string } }
   | { type: 'growth'; payload: { height_cm: number | null; weight_kg: number | null } }
   | { type: 'activity'; payload: { kind: ActivityKind; duration_minutes: number | null } }
+  | { type: 'expense'; payload: { amount: number; category: ExpenseCategory; custom_category: string; title: string; payer: ExpensePayer; method: ExpenseMethod } }
 );
 export type QuickEventType = 'bottle' | 'diaper' | 'sleep' | 'breast';
 export type CareEventType = 'medication' | 'meal' | 'growth' | 'activity';
 export type CareBody = Extract<EventBody, { type: CareEventType }>;
 export type VaccinationBody = Extract<EventBody, { type: 'vaccination' }>;
+export type ExpenseBody = Extract<EventBody, { type: 'expense' }>;
 export type VaccinationStatus = VaccinationBody['payload']['status'];
 export type Scope = { family_id: string; baby_id: string };
 export type ServerEvent = Omit<Common, 'deleted'> & Scope & {

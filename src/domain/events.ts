@@ -56,6 +56,17 @@ export function validateBody(body: EventBody, now = Date.now()) {
         || (duration_minutes !== null && (!Number.isFinite(duration_minutes) || duration_minutes <= 0 || duration_minutes > 1440))) throw new DataError('Thông tin hoạt động chưa hợp lệ.');
       break;
     }
+    case 'expense': {
+      keys(body.payload, ['amount', 'category', 'custom_category', 'title', 'payer', 'method']);
+      const { amount, category, custom_category, title, payer, method } = body.payload;
+      if (end !== null || !Number.isSafeInteger(amount) || amount <= 0 || amount > 1_000_000_000
+        || !['milk', 'diaper', 'food', 'health', 'clothes', 'education', 'toys', 'other', 'custom'].includes(category)
+        || typeof custom_category !== 'string' || [...custom_category].length > 40
+        || (category === 'custom' ? !custom_category.trim() || custom_category !== custom_category.trim() : custom_category !== '')
+        || typeof title !== 'string' || [...title].length > 120
+        || !['father', 'mother', 'other'].includes(payer) || !['cash', 'transfer', 'card', 'ewallet'].includes(method)) throw new DataError('Thông tin chi tiêu chưa hợp lệ.');
+      break;
+    }
     case 'vaccination': {
       keys(body.payload, ['vaccine', 'dose', 'status', 'location']);
       const { vaccine, dose, status, location } = body.payload;
